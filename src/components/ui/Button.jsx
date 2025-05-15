@@ -1,0 +1,35 @@
+import React from 'react';
+
+const Button = ({ 
+  children, 
+  type = 'button', 
+  variant = 'primary', 
+  className = '', 
+  onClick = () => {},
+  fullWidth = false,
+  ...props 
+}) => {
+  const baseClasses = "flex justify-center items-center py-3 px-4 rounded-md font-medium transition-colors";
+  
+  const variantClasses = {
+    primary: "bg-[#1f1d4d] text-text-light hover:bg-opacity-90",
+    secondary: "bg-secondary text-text-light hover:bg-opacity-90",
+    outline: "border border-primary text-primary hover:bg-primary hover:bg-opacity-10",
+    link: "bg-transparent text-primary hover:underline p-0"
+  };
+  
+  const widthClass = fullWidth ? "w-full" : "";
+  
+  return (
+    <button
+      type={type}
+      className={`${baseClasses} ${variantClasses[variant]} ${widthClass} ${className}`}
+      onClick={onClick}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
+
+export default Button; 
