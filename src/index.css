@@ -1,5 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: oklch(0.35 0.2 270); /* Deep purple */
+  --color-secondary: oklch(0.68 0.2 197); /* Light blue/cyan */
+  --color-accent: oklch(0.25 0.12 270); /* Darker accent purple */
+  --color-text-light: #ffffff;
+  --color-text-dark: #213547;
+  --color-background: oklch(0.25 0.17 270); /* Dark purple background */
+  --color-button-primary: oklch(0.5 0.15 270); /* Medium purple for buttons */
+  --font-sans: system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
 
@@ -24,10 +37,9 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  min-width: 100vw;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 h1 {
