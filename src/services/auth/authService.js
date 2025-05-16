@@ -99,6 +99,34 @@ const logout = () => {
   // You can add additional cleanup here if needed
 };
 
+// Save Google user data to backend
+const saveGoogleUser = async (userData) => {
+  try {
+    const response = await fetch(`${API_URL}/auth/save-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to save Google user');
+    }
+    
+    if (data.user && data.token) {
+      storeUserData(data.user, data.token);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error saving Google user:', error);
+    throw error;
+  }
+};
+
 // Google OAuth login
 const googleLogin = () => {
   // Will be implemented to integrate with Google OAuth
@@ -117,6 +145,7 @@ const authService = {
   getCurrentUser,
   getToken,
   isAuthenticated,
+  saveGoogleUser,
   googleLogin,
 };
 
