@@ -5,7 +5,6 @@ import Register from './pages/auth/Register';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import AuthCallback from './pages/auth/AuthCallback';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import TestSupabase from './pages/TestSupabase';
 
 function App() {
   useEffect(() => {
@@ -26,7 +25,6 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/test-supabase" element={<TestSupabase />} />
         
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
