@@ -169,15 +169,6 @@ const Login = () => {
         </p>
       </div>
       
-      <div className="mt-4 text-center">
-        <Link 
-          to="/test-supabase" 
-          className="text-secondary hover:underline text-sm"
-        >
-          Test Supabase Connection
-        </Link>
-      </div>
-      
       <div className="mt-6 pt-4 border-t border-gray-500 border-opacity-30 flex justify-center space-x-4 text-xs text-text-light opacity-70">
         <Link to="/terms" className="hover:underline">Terms & Conditions</Link>
         <Link to="/support" className="hover:underline">Support</Link>
