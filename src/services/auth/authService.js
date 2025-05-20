@@ -102,6 +102,8 @@ const logout = () => {
 // Save Google user data to backend
 const saveGoogleUser = async (userData) => {
   try {
+    console.log('Saving Google user to backend:', userData.id);
+    
     const response = await fetch(`${API_URL}/auth/save-user`, {
       method: 'POST',
       headers: {
@@ -113,6 +115,16 @@ const saveGoogleUser = async (userData) => {
     const data = await response.json();
     
     if (!response.ok) {
+      // Check if it's a duplicate error (500)
+      if (response.status === 500 && 
+          (data.message?.includes('already exists') || data.message?.includes('duplicate'))) {
+        console.log('User already exists, using session data instead');
+        // Simply return the user data from the session
+        return { 
+          user: userData, 
+          token: getToken() || 'session-token' 
+        };
+      }
       throw new Error(data.message || 'Failed to save Google user');
     }
     
