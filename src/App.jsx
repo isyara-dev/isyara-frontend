@@ -5,11 +5,12 @@ import Register from './pages/auth/Register';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import AuthCallback from './pages/auth/AuthCallback';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import BelajarPage from './pages/belajar/BelajarPage';
+import ModulePage from './pages/module/ModulePage';
 
 function App() {
   useEffect(() => {
     console.log('App component mounted');
-    // Log any environment variables (without exposing sensitive data)
     console.log('Environment:', {
       NODE_ENV: import.meta.env.MODE,
       hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
@@ -25,15 +26,17 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/belajar" element={<BelajarPage />} />
+          <Route path="/modul" element={<ModulePage />} />
         
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          {/* Add more protected routes here */}
+          
+          
+          {/* Default protected route */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
-        
-        {/* Redirect to login page for unauthenticated users and to dashboard for authenticated ones */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
         
         {/* Catch-all route */}
         <Route path="*" element={<Navigate to="/login" replace />} />
