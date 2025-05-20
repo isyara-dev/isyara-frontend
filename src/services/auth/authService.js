@@ -7,6 +7,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const USER_KEY = 'isyara_user';
 const TOKEN_KEY = 'isyara_token';
 
+// Add this at the top of the file
+const DEBUG_MODE = false;
+
 // Helper to store user data in local storage
 const storeUserData = (userData, token) => {
   localStorage.setItem(USER_KEY, JSON.stringify(userData));
@@ -102,7 +105,9 @@ const logout = () => {
 // Save Google user data to backend
 const saveGoogleUser = async (userData) => {
   try {
-    console.log('Saving Google user to backend:', userData.id);
+    if (DEBUG_MODE) {
+      console.log('Saving Google user to backend:', userData.id);
+    }
     
     const response = await fetch(`${API_URL}/auth/save-user`, {
       method: 'POST',
@@ -118,7 +123,9 @@ const saveGoogleUser = async (userData) => {
       // Check if it's a duplicate error (500)
       if (response.status === 500 && 
           (data.message?.includes('already exists') || data.message?.includes('duplicate'))) {
-        console.log('User already exists, using session data instead');
+        if (DEBUG_MODE) {
+          console.log('User already exists, using session data instead');
+        }
         // Simply return the user data from the session
         return { 
           user: userData, 

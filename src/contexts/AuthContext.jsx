@@ -5,6 +5,9 @@ import supabase from '../services/supabaseClient';
 // Create the auth context
 const AuthContext = createContext();
 
+// Set this to true for development, false for production
+const DEBUG_MODE = false;
+
 export const useAuth = () => {
   return useContext(AuthContext);
 };
@@ -24,11 +27,18 @@ export const AuthProvider = ({ children }) => {
   // Track if initial load has been done
   const initialLoadDoneRef = useRef(false);
 
+  // Custom logger that only logs in debug mode
+  const logger = useCallback((message, ...args) => {
+    if (DEBUG_MODE) {
+      console.log(message, ...args);
+    }
+  }, []);
+
   // Create a stable debounced save function with useCallback
   const saveGoogleUser = useCallback(async (user, eventType) => {
     // If we've already saved this user ID and it's not a fresh login, don't save again
     if (savedUserIdRef.current === user.id && initialLoadDoneRef.current) {
-      console.log(`User ${user.id} already saved, skipping backend request`);
+      logger(`User ${user.id} already saved, skipping backend request`);
       // Still update the UI state if needed
       if (!currentUser || currentUser.id !== user.id) {
         setCurrentUser({
@@ -59,7 +69,7 @@ export const AuthProvider = ({ children }) => {
       saveInProgressRef.current = true;
       
       try {
-        console.log(`Processing auth event: ${eventType} for user ${user.id}`);
+        logger(`Processing auth event: ${eventType} for user ${user.id}`);
         
         const userData = await authService.saveGoogleUser({
           id: user.id,
@@ -89,7 +99,7 @@ export const AuthProvider = ({ children }) => {
         saveInProgressRef.current = false;
       }
     }, 200);
-  }, [currentUser]);
+  }, [currentUser, logger]);
 
   // Handle auth state changes - with selective processing
   useEffect(() => {
@@ -118,7 +128,7 @@ export const AuthProvider = ({ children }) => {
         // Set up a single auth listener
         const { data } = await supabase.auth.onAuthStateChange(
           async (event, session) => {
-            console.log('Auth event:', event);
+            logger('Auth event:', event);
             
             if (event === 'SIGNED_OUT') {
               setCurrentUser(null);
@@ -133,7 +143,7 @@ export const AuthProvider = ({ children }) => {
               if (savedUserIdRef.current !== session.user.id) {
                 await saveGoogleUser(session.user, event);
               } else {
-                console.log(`User ${session.user.id} already saved, ignoring duplicate SIGNED_IN event`);
+                logger(`User ${session.user.id} already saved, ignoring duplicate SIGNED_IN event`);
               }
             }
           }
@@ -158,7 +168,7 @@ export const AuthProvider = ({ children }) => {
         authListener.unsubscribe();
       }
     };
-  }, [saveGoogleUser]);
+  }, [saveGoogleUser, logger]);
 
   // Login method
   const login = async (email, password) => {

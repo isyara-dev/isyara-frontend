@@ -10,13 +10,15 @@ import ModulePage from './pages/module/ModulePage';
 
 function App() {
   useEffect(() => {
-    console.log('App component mounted');
-    console.log('Environment:', {
-      NODE_ENV: import.meta.env.MODE,
-      hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
-      hasSupabaseKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-      hasApiUrl: !!import.meta.env.VITE_API_URL,
-    });
+    if (import.meta.env.DEV) {
+      console.log('App component mounted');
+      console.log('Environment:', {
+        NODE_ENV: import.meta.env.MODE,
+        hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
+        hasSupabaseKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+        hasApiUrl: !!import.meta.env.VITE_API_URL
+      });
+    }
   }, []);
 
   return (
