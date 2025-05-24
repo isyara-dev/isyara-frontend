@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import authService from '../services/auth/authService';
+import apiService from '../services/api/apiClient';
 import supabase from '../services/supabaseClient';
 
 // Create the auth context
@@ -101,6 +102,37 @@ export const AuthProvider = ({ children }) => {
     }, 200);
   }, [currentUser, logger]);
 
+  // Load user profile on initial mount
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      // Check if we have a token
+      const token = authService.getAccessToken();
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        // Fetch user profile from /auth/me endpoint
+        const userData = await apiService.getUserProfile();
+        if (userData) {
+          setCurrentUser(userData);
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        // If token is invalid, logout
+        if (error.response && error.response.status === 401) {
+          authService.logout();
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadUserProfile();
+  }, []);
+
   // Handle auth state changes - with selective processing
   useEffect(() => {
     let authListener = null;
@@ -189,12 +221,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Register method
-  const register = async (name, email, password) => {
+  const register = async (username, email, password) => {
     setLoading(true);
     setError('');
     
     try {
-      const response = await authService.register(name, email, password);
+      const response = await authService.register(username, email, password);
       setCurrentUser(response.user);
       setIsAuthenticated(true);
       return response;
@@ -251,14 +283,10 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    googleLogin
+    googleLogin,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export default AuthContext;
