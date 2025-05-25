@@ -153,23 +153,23 @@ const HandGestureDetector = memo(
                         }
                       }
 
-                      // Draw prediction text
-                      ctx.font = "48px Arial";
-                      ctx.fillStyle = "white";
-                      ctx.strokeStyle = "black";
-                      ctx.lineWidth = 2;
-                      ctx.fillText(gesture || "-", 20, 60);
-                      ctx.strokeText(gesture || "-", 20, 60);
+                      //   // Draw prediction text
+                      //   ctx.font = "48px Arial";
+                      //   ctx.fillStyle = "white";
+                      //   ctx.strokeStyle = "black";
+                      //   ctx.lineWidth = 2;
+                      //   ctx.fillText(gesture || "-", 20, 60);
+                      //   ctx.strokeText(gesture || "-", 20, 60);
 
-                      // Draw confidence
-                      ctx.font = "24px Arial";
-                      if (confidenceValue) {
-                        ctx.fillText(
-                          `${(confidenceValue * 100).toFixed(1)}%`,
-                          20,
-                          100
-                        );
-                      }
+                      //   // Draw confidence
+                      //   ctx.font = "24px Arial";
+                      //   if (confidenceValue) {
+                      //     ctx.fillText(
+                      //       `${(confidenceValue * 100).toFixed(1)}%`,
+                      //       20,
+                      //       100
+                      //     );
+                      //   }
                     }
 
                     // Clean up tensors
@@ -365,6 +365,7 @@ const HandGestureDetector = memo(
           playsInline
           muted
           className="w-full h-full object-cover rounded-xl"
+          style={{ display: "none" }}
         />
 
         <canvas

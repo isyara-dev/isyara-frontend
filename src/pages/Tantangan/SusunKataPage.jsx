@@ -28,12 +28,14 @@ function SusunKataPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentHint, setCurrentHint] = useState(null);
   const [points, setPoints] = useState(0);
+  const [bestScore, setBestScore] = useState(100); // Example best score
   const [isLoading, setIsLoading] = useState(true);
   const [completedWordIds, setCompletedWordIds] = useState([]);
   const [currentWordData, setCurrentWordData] = useState(null);
   const [gameState, setGameState] = useState(GAME_STATES.IDLE);
-  const [showDebugButtons, setShowDebugButtons] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [correctGesture, setCorrectGesture] = useState(false);
+  const [incorrectGesture, setIncorrectGesture] = useState(false);
 
   // Refs for tracking state without triggering rerenders
   const currentIndexRef = useRef(0);
@@ -41,6 +43,7 @@ function SusunKataPage() {
   const gameStateRef = useRef(GAME_STATES.IDLE);
   const lastDetectedGestureRef = useRef(null);
   const completedRef = useRef(false);
+  const cameraBoxRef = useRef(null);
 
   // Fetch random word - memoized to prevent recreating on every render
   const fetchRandomWord = useCallback(async () => {
@@ -97,6 +100,16 @@ function SusunKataPage() {
       setCurrentHint(res);
     } catch (error) {
       console.error(`Error fetching hint for letter ${letter}:`, error);
+    }
+  }, []);
+
+  // Play sound effect for correct gesture
+  const playCorrectSound = useCallback(() => {
+    try {
+      const audio = new Audio("/sounds/correct.mp3"); // Make sure you have this sound file
+      audio.play().catch((e) => console.log("Audio play failed:", e));
+    } catch (error) {
+      console.error("Error playing sound:", error);
     }
   }, []);
 
@@ -161,6 +174,27 @@ function SusunKataPage() {
     }
   }, [fetchHint, handleWordCompletion]);
 
+  // Show correct gesture feedback
+  const showCorrectGestureFeedback = useCallback(() => {
+    setCorrectGesture(true);
+    playCorrectSound();
+
+    // Reset after animation completes
+    setTimeout(() => {
+      setCorrectGesture(false);
+    }, 500);
+  }, [playCorrectSound]);
+
+  // Show incorrect gesture feedback
+  const showIncorrectGestureFeedback = useCallback(() => {
+    setIncorrectGesture(true);
+
+    // Reset after animation completes
+    setTimeout(() => {
+      setIncorrectGesture(false);
+    }, 300);
+  }, []);
+
   // Handle gesture detection
   const handleGestureDetected = useCallback(
     (gesture) => {
@@ -194,11 +228,32 @@ function SusunKataPage() {
         // Save the last detected gesture
         lastDetectedGestureRef.current = gesture;
 
+        // Show correct gesture feedback
+        showCorrectGestureFeedback();
+
         // Move to next letter immediately
         moveToNextLetter();
+      } else if (
+        gameStateRef.current === GAME_STATES.DETECTING &&
+        gesture !== lettersRef.current[currentIndexRef.current] &&
+        gesture !== lastDetectedGestureRef.current
+      ) {
+        // Incorrect gesture detected
+        console.log(`Incorrect gesture detected: ${gesture}`);
+
+        // Show incorrect gesture feedback
+        showIncorrectGestureFeedback();
+
+        // Update last detected gesture to prevent spam
+        lastDetectedGestureRef.current = gesture;
+
+        // Reset after a short delay
+        setTimeout(() => {
+          lastDetectedGestureRef.current = null;
+        }, 1000);
       }
     },
-    [moveToNextLetter]
+    [moveToNextLetter, showCorrectGestureFeedback, showIncorrectGestureFeedback]
   );
 
   // Submit completed words to backend
@@ -218,48 +273,65 @@ function SusunKataPage() {
     }
   }, [completedWordIds]);
 
-  // Toggle debug buttons
-  const toggleDebugButtons = useCallback(() => {
-    setShowDebugButtons((prev) => !prev);
-  }, []);
-
-  // Handle back button click
-  const handleBackClick = useCallback(() => {
+  // Handle finish button click
+  const handleFinishClick = useCallback(() => {
     // Submit completed words before navigating away
     submitCompletedWords();
     navigate("/modul");
   }, [navigate, submitCompletedWords]);
 
-  // Simulate gesture for debugging
-  const simulateGesture = useCallback(
-    (letter) => {
-      handleGestureDetected(letter);
-    },
-    [handleGestureDetected]
-  );
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-800 to-blue-700 text-white">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-800 to-blue-700 text-white flex flex-col max-h-screen overflow-hidden">
       {/* Header */}
       <header className="flex justify-between items-center p-4 bg-indigo-900">
-        <img src="/logo-dicoding.svg" alt="Dicoding" className="h-6" />
-        <div className="flex items-center gap-2">
-          <div className="text-xs bg-indigo-600 px-2 py-1 rounded">
-            State: {gameState}
-          </div>
-          <button
-            onClick={handleBackClick}
-            className="text-sm bg-indigo-700 px-3 py-1 rounded flex items-center"
+        {/* Finish button (left) */}
+        <button
+          onClick={handleFinishClick}
+          className="text-sm bg-indigo-700 px-3 py-1 rounded flex items-center"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 mr-2"
+            viewBox="0 0 20 20"
+            fill="currentColor"
           >
-            ← Kembali
-          </button>
+            <path
+              fillRule="evenodd"
+              d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Selesai
+        </button>
+
+        {/* Best Score display (right) */}
+        <div className="flex items-center gap-2 bg-indigo-500 px-4 py-2 rounded font-bold">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+            />
+          </svg>
+          Best Score: {bestScore}
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="grid grid-cols-1 md:grid-cols-2 p-8 gap-8">
+      {/* Main content - made responsive with flex-1 to take available space */}
+      <main className="grid grid-cols-1 md:grid-cols-2 p-4 md:p-8 gap-4 md:gap-8 flex-1 overflow-hidden">
         {/* Camera (left) */}
-        <div className="flex justify-center items-center bg-purple-700 rounded-xl h-[400px] relative">
+        <div
+          ref={cameraBoxRef}
+          className={`flex justify-center items-center bg-purple-700 rounded-xl h-full relative transition-all duration-200
+            ${incorrectGesture ? "border-4 border-red-500" : ""}`}
+        >
           {isLoading ? (
             <p>Loading camera...</p>
           ) : (
@@ -280,59 +352,12 @@ function SusunKataPage() {
                   </div>
                 </div>
               )}
-
-              {/* Debug button toggle */}
-              <button
-                onClick={toggleDebugButtons}
-                className="absolute top-4 right-4 bg-gray-800/50 p-1 rounded text-xs z-10"
-              >
-                {showDebugButtons ? "Hide Debug" : "Show Debug"}
-              </button>
-
-              {/* Debug buttons - only shown when toggled on */}
-              {showDebugButtons && (
-                <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 z-10">
-                  {letters.map((letter, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => simulateGesture(letter)}
-                      className={`px-2 py-1 rounded text-xs ${
-                        idx === currentIndex
-                          ? "bg-green-500"
-                          : idx < currentIndex
-                          ? "bg-gray-500"
-                          : "bg-blue-500"
-                      }`}
-                    >
-                      {letter}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() =>
-                      console.log({
-                        currentIndex,
-                        currentIndexRef: currentIndexRef.current,
-                        letters,
-                        lettersRef: lettersRef.current,
-                        gameState,
-                        gameStateRef: gameStateRef.current,
-                        points,
-                        completedWordIds,
-                        completedRef: completedRef.current,
-                      })
-                    }
-                    className="px-2 py-1 rounded text-xs bg-yellow-500"
-                  >
-                    Log State
-                  </button>
-                </div>
-              )}
             </>
           )}
         </div>
 
         {/* Hint image (right) */}
-        <div className="flex flex-col justify-center items-center bg-blue-700 rounded-xl h-[400px]">
+        <div className="flex flex-col justify-center items-center bg-blue-700 rounded-xl h-full">
           {isLoading ? (
             <p>Loading hint...</p>
           ) : currentHint ? (
@@ -353,26 +378,50 @@ function SusunKataPage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="flex justify-between items-center px-8 py-4 bg-gradient-to-r from-purple-700 to-purple-800">
-        <div className="bg-indigo-500 px-4 py-2 rounded font-bold">
-          {points} Pts
-        </div>
-        <div className="flex gap-2 text-6xl font-bold tracking-widest">
-          {letters.map((char, index) => (
-            <span
-              key={index}
-              className={
-                index === currentIndex
-                  ? "text-white"
-                  : index < currentIndex
-                  ? "text-green-300"
-                  : "text-purple-300"
-              }
-            >
-              {char}
-            </span>
-          ))}
+      {/* Footer with word display and scores */}
+      <footer className="p-4">
+        {/* Word display with background card and scores */}
+        <div className="bg-gradient-to-r from-purple-700 to-purple-800 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            {/* Current score (left) */}
+            <div className="bg-blue-600/80 px-3 py-1 rounded-lg shadow-lg">
+              <div className="text-xs opacity-80">Current</div>
+              <div className="text-lg font-bold">{points} pts</div>
+            </div>
+
+            {/* Letters (center) */}
+            <div className="flex gap-2 text-4xl md:text-5xl font-bold tracking-widest px-2">
+              {letters.map((char, index) => (
+                <span
+                  key={index}
+                  className={`transition-all duration-300 transform
+                    ${
+                      index === currentIndex
+                        ? "text-white"
+                        : index < currentIndex
+                        ? "text-green-300"
+                        : "text-purple-300"
+                    }
+                    ${
+                      correctGesture && index === currentIndex - 1
+                        ? "scale-125 text-green-400"
+                        : "scale-100"
+                    }
+                  `}
+                >
+                  {char}
+                </span>
+              ))}
+            </div>
+
+            {/* Potential points (right) */}
+            <div className="bg-green-600/80 px-3 py-1 rounded-lg shadow-lg">
+              <div className="text-xs opacity-80">Potential</div>
+              <div className="text-lg font-bold">
+                +{currentWordData?.points || 0}
+              </div>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
