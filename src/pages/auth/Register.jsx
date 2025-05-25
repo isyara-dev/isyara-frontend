@@ -9,7 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -23,7 +23,7 @@ const Register = () => {
   // Reset form when component mounts
   useEffect(() => {
     setFormData({
-      name: '',
+      username: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -59,8 +59,8 @@ const Register = () => {
     const newErrors = {};
     
     // Basic validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required';
       isValid = false;
     }
     
@@ -95,7 +95,7 @@ const Register = () => {
     if (validateForm()) {
       setIsSubmitting(true);
       try {
-        await register(formData.name, formData.email, formData.password);
+        await register(formData.username, formData.email, formData.password);
         // Will redirect via the useEffect if successful
       } catch (error) {
         setErrors({
@@ -121,13 +121,13 @@ const Register = () => {
         )}
       
         <Input
-          id="name"
-          name="name"
-          label="Name"
-          placeholder="Enter your name"
-          value={formData.name}
+          id="username"
+          name="username"
+          label="Username"
+          placeholder="Enter your username"
+          value={formData.username}
           onChange={handleChange}
-          error={errors.name}
+          error={errors.username}
           required
         />
         

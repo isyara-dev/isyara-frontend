@@ -5,18 +5,35 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Local storage keys
 const USER_KEY = 'isyara_user';
-const TOKEN_KEY = 'isyara_token';
+const ACCESS_TOKEN_KEY = 'isyara_access_token';
+const REFRESH_TOKEN_KEY = 'isyara_refresh_token';
 
-// Helper to store user data in local storage
-const storeUserData = (userData, token) => {
+// Add this at the top of the file
+const DEBUG_MODE = false;
+
+// Helper to store user data and tokens in local storage
+const storeUserData = (userData, tokens) => {
   localStorage.setItem(USER_KEY, JSON.stringify(userData));
-  localStorage.setItem(TOKEN_KEY, token);
+  
+  // Store tokens separately if they are provided as separate fields
+  if (typeof tokens === 'object') {
+    if (tokens.access_token) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
+    }
+    if (tokens.refresh_token) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+    }
+  } else if (typeof tokens === 'string') {
+    // For backward compatibility
+    localStorage.setItem(ACCESS_TOKEN_KEY, tokens);
+  }
 };
 
 // Helper to clear user data from local storage
 const clearUserData = () => {
   localStorage.removeItem(USER_KEY);
-  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
 // Get the current authenticated user from local storage
@@ -32,20 +49,25 @@ const getCurrentUser = () => {
   }
 };
 
-// Get the auth token from local storage
-const getToken = () => {
-  return localStorage.getItem(TOKEN_KEY);
+// Get the access token from local storage
+const getAccessToken = () => {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+};
+
+// Get the refresh token from local storage
+const getRefreshToken = () => {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
 };
 
 // Register a new user with email and password
-const register = async (name, email, password) => {
+const register = async (username, email, password) => {
   try {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ username, email, password }),
     });
     
     const data = await response.json();
@@ -54,8 +76,13 @@ const register = async (name, email, password) => {
       throw new Error(data.message || 'Registration failed');
     }
     
-    if (data.user && data.token) {
-      storeUserData(data.user, data.token);
+    // Store user data and tokens
+    if (data.user) {
+      const tokens = {
+        access_token: data.access_token || data.token,
+        refresh_token: data.refresh_token
+      };
+      storeUserData(data.user, tokens);
     }
     
     return data;
@@ -82,8 +109,13 @@ const login = async (email, password) => {
       throw new Error(data.message || 'Login failed');
     }
     
-    if (data.user && data.token) {
-      storeUserData(data.user, data.token);
+    // Store user data and tokens
+    if (data.user) {
+      const tokens = {
+        access_token: data.access_token || data.token,
+        refresh_token: data.refresh_token
+      };
+      storeUserData(data.user, tokens);
     }
     
     return data;
@@ -102,6 +134,10 @@ const logout = () => {
 // Save Google user data to backend
 const saveGoogleUser = async (userData) => {
   try {
+    if (DEBUG_MODE) {
+      console.log('Saving Google user to backend:', userData.id);
+    }
+    
     const response = await fetch(`${API_URL}/auth/save-user`, {
       method: 'POST',
       headers: {
@@ -113,11 +149,28 @@ const saveGoogleUser = async (userData) => {
     const data = await response.json();
     
     if (!response.ok) {
+      // Check if it's a duplicate error (500)
+      if (response.status === 500 && 
+          (data.message?.includes('already exists') || data.message?.includes('duplicate'))) {
+        if (DEBUG_MODE) {
+          console.log('User already exists, using session data instead');
+        }
+        // Simply return the user data from the session
+        return { 
+          user: userData, 
+          token: getAccessToken() || 'session-token' 
+        };
+      }
       throw new Error(data.message || 'Failed to save Google user');
     }
     
-    if (data.user && data.token) {
-      storeUserData(data.user, data.token);
+    // Store user data and tokens
+    if (data.user) {
+      const tokens = {
+        access_token: data.access_token || data.token,
+        refresh_token: data.refresh_token
+      };
+      storeUserData(data.user, tokens);
     }
     
     return data;
@@ -135,7 +188,46 @@ const googleLogin = () => {
 
 // Check if user is authenticated
 const isAuthenticated = () => {
-  return !!getToken();
+  return !!getAccessToken();
+};
+
+// Refresh the access token using the refresh token
+const refreshToken = async () => {
+  const refresh = getRefreshToken();
+  
+  if (!refresh) {
+    throw new Error('No refresh token available');
+  }
+  
+  try {
+    const response = await fetch(`${API_URL}/auth/refresh-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to refresh token');
+    }
+    
+    // Update tokens in storage
+    if (data.access_token) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+    }
+    
+    if (data.refresh_token) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    throw error;
+  }
 };
 
 const authService = {
@@ -143,10 +235,12 @@ const authService = {
   login,
   logout,
   getCurrentUser,
-  getToken,
+  getAccessToken,
+  getRefreshToken,
   isAuthenticated,
   saveGoogleUser,
   googleLogin,
+  refreshToken,
 };
 
 export default authService; 
