@@ -45,6 +45,24 @@ function SusunKataPage() {
   const completedRef = useRef(false);
   const cameraBoxRef = useRef(null);
 
+  // Update state variables for gesture detection
+  const [detectedGesture, setDetectedGesture] = useState(null);
+  const [gestureConfidence, setGestureConfidence] = useState(0);
+  const [gestureDetectionProgress, setGestureDetectionProgress] = useState(0);
+  const [isCorrectGesture, setIsCorrectGesture] = useState(false);
+  const [isIncorrectGesture, setIsIncorrectGesture] = useState(false);
+  const gestureTimerRef = useRef(null);
+  const gestureDetectionStartRef = useRef(null);
+  const GESTURE_THRESHOLD = 0.6; // 60% confidence threshold
+  const GESTURE_DETECTION_TIME = 2000; // 2 seconds
+
+  // Add a state to track the letter being animated
+  const [animatingLetterIndex, setAnimatingLetterIndex] = useState(null);
+  const animationTimeoutRef = useRef(null);
+
+  // Add a state to track if we're transitioning to a new word
+  const [isTransitioningWord, setIsTransitioningWord] = useState(false);
+
   // Fetch random word - memoized to prevent recreating on every render
   const fetchRandomWord = useCallback(async () => {
     try {
@@ -75,6 +93,10 @@ function SusunKataPage() {
       // Reset last detected gesture
       lastDetectedGestureRef.current = null;
 
+      // Reset animation state
+      setAnimatingLetterIndex(null);
+      setIsTransitioningWord(false);
+
       // Fetch initial hint
       fetchHint(wordStr.split("")[0]);
     } catch (error) {
@@ -82,6 +104,7 @@ function SusunKataPage() {
       setIsLoading(false);
       setGameState(GAME_STATES.IDLE);
       gameStateRef.current = GAME_STATES.IDLE;
+      setIsTransitioningWord(false);
     }
   }, []);
 
@@ -118,6 +141,7 @@ function SusunKataPage() {
     console.log("Handling word completion...");
     if (currentWordData && !completedRef.current) {
       completedRef.current = true;
+      setIsTransitioningWord(true);
 
       // Add points
       const newPoints = points + currentWordData.points;
@@ -139,50 +163,83 @@ function SusunKataPage() {
       // Fetch next word after a delay
       setTimeout(() => {
         setShowSuccessMessage(false);
+
+        // Reset only what's needed for the next word
+        setDetectedGesture(null);
+        setGestureConfidence(0);
+        setGestureDetectionProgress(0);
+        setIsCorrectGesture(false);
+        setIsIncorrectGesture(false);
+        setCorrectGesture(false);
+        setIncorrectGesture(false);
+
+        // Fetch new word without resetting camera
         fetchRandomWord();
       }, 2000);
     }
   }, [currentWordData, fetchRandomWord, points]);
 
-  // Move to next letter
+  // Move to next letter with improved animation
   const moveToNextLetter = useCallback(() => {
     const nextIndex = currentIndexRef.current + 1;
 
-    if (nextIndex < lettersRef.current.length) {
-      // Move to next letter
-      console.log(`Moving to next letter: ${lettersRef.current[nextIndex]}`);
-      setCurrentIndex(nextIndex);
-      currentIndexRef.current = nextIndex;
+    // Set the current letter as animating
+    setAnimatingLetterIndex(currentIndexRef.current);
 
-      // Fetch hint for next letter
-      fetchHint(lettersRef.current[nextIndex]);
-
-      // Return to detecting state immediately
-      setGameState(GAME_STATES.DETECTING);
-      gameStateRef.current = GAME_STATES.DETECTING;
-    } else {
-      // Word completed
-      console.log("Word completed! All letters done.");
-      setGameState(GAME_STATES.COMPLETED);
-      gameStateRef.current = GAME_STATES.COMPLETED;
-
-      // Force update current index to ensure UI updates
-      setCurrentIndex(nextIndex - 1);
-
-      // Handle word completion
-      handleWordCompletion();
+    // Clear any existing animation timeout
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
     }
-  }, [fetchHint, handleWordCompletion]);
+
+    // Schedule animation completion
+    animationTimeoutRef.current = setTimeout(() => {
+      // Animation completed
+      if (isTransitioningWord) {
+        // Skip further processing if we're already transitioning words
+        return;
+      }
+
+      setAnimatingLetterIndex(null);
+
+      if (nextIndex < lettersRef.current.length) {
+        // Move to next letter
+        console.log(`Moving to next letter: ${lettersRef.current[nextIndex]}`);
+        setCurrentIndex(nextIndex);
+        currentIndexRef.current = nextIndex;
+
+        // Fetch hint for next letter
+        fetchHint(lettersRef.current[nextIndex]);
+
+        // Return to detecting state
+        setGameState(GAME_STATES.DETECTING);
+        gameStateRef.current = GAME_STATES.DETECTING;
+
+        // Reset gesture states for next letter
+        setDetectedGesture(null);
+        setGestureConfidence(0);
+        setGestureDetectionProgress(0);
+        setIsCorrectGesture(false);
+        setIsIncorrectGesture(false);
+        setCorrectGesture(false);
+        setIncorrectGesture(false);
+      } else {
+        // Word completed
+        console.log("Word completed! All letters done.");
+        setGameState(GAME_STATES.COMPLETED);
+        gameStateRef.current = GAME_STATES.COMPLETED;
+
+        // Handle word completion
+        handleWordCompletion();
+      }
+    }, 800); // Animation duration - longer to ensure visibility
+  }, [fetchHint, handleWordCompletion, isTransitioningWord]);
 
   // Show correct gesture feedback
   const showCorrectGestureFeedback = useCallback(() => {
     setCorrectGesture(true);
     playCorrectSound();
 
-    // Reset after animation completes
-    setTimeout(() => {
-      setCorrectGesture(false);
-    }, 500);
+    // Don't reset the green border - it will be reset when moving to next letter
   }, [playCorrectSound]);
 
   // Show incorrect gesture feedback
@@ -197,64 +254,142 @@ function SusunKataPage() {
 
   // Handle gesture detection
   const handleGestureDetected = useCallback(
-    (gesture) => {
-      // Don't process gestures if we're in completed state
+    (gesture, confidenceValue) => {
+      // Don't process gestures if we're in completed state, animating, or transitioning words
       if (
         gameStateRef.current === GAME_STATES.COMPLETED ||
-        completedRef.current
+        completedRef.current ||
+        animatingLetterIndex !== null ||
+        isTransitioningWord
       ) {
         return;
       }
 
-      // Prevent processing the same gesture multiple times
-      if (gesture === lastDetectedGestureRef.current) {
+      // If gesture is null, it means hand is not visible
+      if (gesture === null) {
+        console.log("Null gesture detected, resetting states");
+
+        // Reset detection timer and progress
+        if (gestureTimerRef.current) {
+          clearInterval(gestureTimerRef.current);
+          gestureTimerRef.current = null;
+        }
+
+        gestureDetectionStartRef.current = null;
+
+        // Reset gesture state
+        setDetectedGesture(null);
+        setGestureConfidence(0);
+        setGestureDetectionProgress(0);
+        setIsCorrectGesture(false);
+        setIsIncorrectGesture(false);
+
+        // Reset border feedback
+        setCorrectGesture(false);
+        setIncorrectGesture(false);
+
         return;
       }
 
-      console.log(
-        "Gesture detected:",
-        gesture,
-        "Current state:",
-        gameStateRef.current
-      );
+      // Update detected gesture and confidence
+      setDetectedGesture(gesture);
+      setGestureConfidence(confidenceValue);
 
-      // Only process if we're in detecting state and gesture matches current letter
-      if (
-        gameStateRef.current === GAME_STATES.DETECTING &&
-        gesture === lettersRef.current[currentIndexRef.current]
-      ) {
-        console.log(`Correct gesture detected: ${gesture}`);
+      // Only process if we're in detecting state
+      if (gameStateRef.current === GAME_STATES.DETECTING) {
+        const currentLetter = lettersRef.current[currentIndexRef.current];
 
-        // Save the last detected gesture
-        lastDetectedGestureRef.current = gesture;
+        // Check if the gesture matches the current letter
+        if (gesture === currentLetter) {
+          // Set correct gesture state
+          setIsCorrectGesture(true);
+          setIsIncorrectGesture(false);
 
-        // Show correct gesture feedback
-        showCorrectGestureFeedback();
+          // Show correct border feedback immediately
+          setCorrectGesture(true);
+          setIncorrectGesture(false);
 
-        // Move to next letter immediately
-        moveToNextLetter();
-      } else if (
-        gameStateRef.current === GAME_STATES.DETECTING &&
-        gesture !== lettersRef.current[currentIndexRef.current] &&
-        gesture !== lastDetectedGestureRef.current
-      ) {
-        // Incorrect gesture detected
-        console.log(`Incorrect gesture detected: ${gesture}`);
+          // If this is the first detection of this gesture or continuing detection
+          if (!gestureDetectionStartRef.current) {
+            console.log("Starting correct gesture detection for:", gesture);
 
-        // Show incorrect gesture feedback
-        showIncorrectGestureFeedback();
+            // Reset any existing timer
+            if (gestureTimerRef.current) {
+              clearInterval(gestureTimerRef.current);
+            }
 
-        // Update last detected gesture to prevent spam
-        lastDetectedGestureRef.current = gesture;
+            // Start a new detection sequence
+            gestureDetectionStartRef.current = Date.now();
+            setGestureDetectionProgress(0);
 
-        // Reset after a short delay
-        setTimeout(() => {
-          lastDetectedGestureRef.current = null;
-        }, 1000);
+            // Start progress timer
+            gestureTimerRef.current = setInterval(() => {
+              const elapsed = Date.now() - gestureDetectionStartRef.current;
+              const progress = Math.min(elapsed / GESTURE_DETECTION_TIME, 1);
+              setGestureDetectionProgress(progress);
+
+              // If we've reached the time requirement and confidence threshold
+              if (progress >= 1 && confidenceValue >= GESTURE_THRESHOLD) {
+                console.log("Gesture completed successfully:", gesture);
+                clearInterval(gestureTimerRef.current);
+                gestureTimerRef.current = null;
+                gestureDetectionStartRef.current = null;
+
+                // Show correct gesture feedback animation
+                showCorrectGestureFeedback();
+
+                // Move to next letter with animation
+                moveToNextLetter();
+              }
+            }, 100);
+          }
+        } else {
+          // Set incorrect gesture state
+          setIsCorrectGesture(false);
+          setIsIncorrectGesture(true);
+
+          // Show incorrect border feedback immediately
+          setCorrectGesture(false);
+          setIncorrectGesture(true);
+
+          // If we were detecting a gesture but got a different one, reset the timer
+          if (gestureTimerRef.current) {
+            console.log(
+              "Incorrect gesture detected:",
+              gesture,
+              "expected:",
+              currentLetter
+            );
+            clearInterval(gestureTimerRef.current);
+            gestureTimerRef.current = null;
+            gestureDetectionStartRef.current = null;
+            setGestureDetectionProgress(0);
+
+            // Show incorrect feedback animation
+            showIncorrectGestureFeedback();
+          }
+        }
       }
     },
-    [moveToNextLetter, showCorrectGestureFeedback, showIncorrectGestureFeedback]
+    [
+      moveToNextLetter,
+      showCorrectGestureFeedback,
+      showIncorrectGestureFeedback,
+      isTransitioningWord,
+    ]
   );
+
+  // Clean up all timers on component unmount
+  useEffect(() => {
+    return () => {
+      if (gestureTimerRef.current) {
+        clearInterval(gestureTimerRef.current);
+      }
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Submit completed words to backend
   const submitCompletedWords = useCallback(async () => {
@@ -283,44 +418,31 @@ function SusunKataPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-800 to-blue-700 text-white flex flex-col max-h-screen overflow-hidden">
       {/* Header */}
-      <header className="flex justify-between items-center p-4 bg-indigo-900">
-        {/* Finish button (left) */}
-        <button
-          onClick={handleFinishClick}
-          className="text-sm bg-indigo-700 px-3 py-1 rounded flex items-center"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 mr-2"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-              clipRule="evenodd"
-            />
-          </svg>
-          Selesai
-        </button>
+      <header className="flex justify-center items-center p-4 bg-indigo-900">
+        {/* Current and Best Score display (center) */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-blue-600/80 px-4 py-2 rounded font-bold">
+            <div className="text-xs opacity-80">Current</div>
+            <div className="text-lg font-bold">{points} pts</div>
+          </div>
 
-        {/* Best Score display (right) */}
-        <div className="flex items-center gap-2 bg-indigo-500 px-4 py-2 rounded font-bold">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-            />
-          </svg>
-          Best Score: {bestScore}
+          <div className="flex items-center gap-2 bg-indigo-500 px-4 py-2 rounded font-bold">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+              />
+            </svg>
+            Best Score: {bestScore}
+          </div>
         </div>
       </header>
 
@@ -330,18 +452,56 @@ function SusunKataPage() {
         <div
           ref={cameraBoxRef}
           className={`flex justify-center items-center bg-purple-700 rounded-xl h-full relative transition-all duration-200
-            ${incorrectGesture ? "border-4 border-red-500" : ""}`}
+            ${incorrectGesture ? "border-4 border-red-500" : ""}
+            ${correctGesture ? "border-4 border-green-500" : ""}`}
         >
           {isLoading ? (
             <p>Loading camera...</p>
           ) : (
             <>
               <HandGestureDetector
+                key="persistent-gesture-detector"
                 onGestureDetected={handleGestureDetected}
                 showDebugInfo={false}
-                active={!showSuccessMessage} // Disable when showing success
-                key="gesture-detector"
+                active={!showSuccessMessage && !isTransitioningWord}
               />
+
+              {/* Detection status display */}
+              <div
+                className={`absolute top-4 left-4 px-3 py-1 rounded transition-all duration-300
+                  ${
+                    detectedGesture
+                      ? isCorrectGesture
+                        ? "bg-green-500/70"
+                        : isIncorrectGesture
+                        ? "bg-red-500/70"
+                        : "bg-black/50"
+                      : "bg-black/50"
+                  }`}
+              >
+                {detectedGesture ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span>{`Detected: ${detectedGesture}`}</span>
+                      <span className="ml-2">
+                        {`${Math.round(gestureConfidence * 100)}%`}
+                      </span>
+                    </div>
+                    {isCorrectGesture && (
+                      <div className="w-full bg-gray-700 h-1 mt-1 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-green-400 transition-all duration-100"
+                          style={{
+                            width: `${gestureDetectionProgress * 100}%`,
+                          }}
+                        ></div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  "No gesture detected"
+                )}
+              </div>
 
               {/* Success message overlay */}
               {showSuccessMessage && (
@@ -383,10 +543,12 @@ function SusunKataPage() {
         {/* Word display with background card and scores */}
         <div className="bg-gradient-to-r from-purple-700 to-purple-800 rounded-xl p-4">
           <div className="flex items-center justify-between">
-            {/* Current score (left) */}
-            <div className="bg-blue-600/80 px-3 py-1 rounded-lg shadow-lg">
-              <div className="text-xs opacity-80">Current</div>
-              <div className="text-lg font-bold">{points} pts</div>
+            {/* Potential points (left) */}
+            <div className="bg-green-600/80 px-3 py-1 rounded-lg shadow-lg">
+              <div className="text-xs opacity-80">Potential</div>
+              <div className="text-lg font-bold">
+                +{currentWordData?.points || 0}
+              </div>
             </div>
 
             {/* Letters (center) */}
@@ -394,7 +556,7 @@ function SusunKataPage() {
               {letters.map((char, index) => (
                 <span
                   key={index}
-                  className={`transition-all duration-300 transform
+                  className={`transition-all duration-500 transform
                     ${
                       index === currentIndex
                         ? "text-white"
@@ -403,8 +565,8 @@ function SusunKataPage() {
                         : "text-purple-300"
                     }
                     ${
-                      correctGesture && index === currentIndex - 1
-                        ? "scale-125 text-green-400"
+                      animatingLetterIndex === index
+                        ? "scale-150 text-green-400"
                         : "scale-100"
                     }
                   `}
@@ -414,13 +576,13 @@ function SusunKataPage() {
               ))}
             </div>
 
-            {/* Potential points (right) */}
-            <div className="bg-green-600/80 px-3 py-1 rounded-lg shadow-lg">
-              <div className="text-xs opacity-80">Potential</div>
-              <div className="text-lg font-bold">
-                +{currentWordData?.points || 0}
-              </div>
-            </div>
+            {/* Finish button (right) */}
+            <button
+              onClick={handleFinishClick}
+              className="text-sm bg-indigo-700 px-3 py-1 rounded"
+            >
+              Selesai
+            </button>
           </div>
         </div>
       </footer>
