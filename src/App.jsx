@@ -13,6 +13,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BelajarPage from "./pages/belajar/BelajarPage";
 import ModulePage from "./pages/module/ModulePage";
 import SusunKataPage from "./pages/Tantangan/SusunKataPage";
+import PracticePage from "./pages/praktek/PracticePage";
 
 function App() {
   useEffect(() => {
@@ -37,6 +38,7 @@ function App() {
         <Route path="/belajar" element={<BelajarPage />} />
         <Route path="/modul" element={<ModulePage />} />
         <Route path="/susun-kata" element={<SusunKataPage />} />
+        <Route path="/praktek" element={<PracticePage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
