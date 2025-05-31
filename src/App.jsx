@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/auth/Login';
@@ -7,6 +8,24 @@ import AuthCallback from './pages/auth/AuthCallback';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import BelajarPage from './pages/belajar/BelajarPage';
 import ModulePage from './pages/module/ModulePage';
+=======
+import React, { useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+import AuthCallback from "./pages/auth/AuthCallback";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import BelajarPage from "./pages/belajar/BelajarPage";
+import ModulePage from "./pages/module/ModulePage";
+import SusunKataPage from "./pages/Tantangan/SusunKataPage";
+import ProfilePage from "./pages/profile/ProfilePage";
+>>>>>>> Stashed changes
 
 function App() {
   useEffect(() => {
@@ -27,8 +46,16 @@ function App() {
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/belajar" element={<BelajarPage />} />
+<<<<<<< Updated upstream
           <Route path="/modul" element={<ModulePage />} />
         
+=======
+        <Route path="/modul" element={<ModulePage />} />
+        <Route path="/susun-kata" element={<SusunKataPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+
+
+>>>>>>> Stashed changes
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
