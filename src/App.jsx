@@ -13,8 +13,8 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BelajarPage from "./pages/belajar/BelajarPage";
 import ModulePage from "./pages/module/ModulePage";
 import ProfilePage from "./pages/profile/ProfilePage";
-import SusunKataPage from "./pages/susunkata/SusunKataPage";
-import PracticePage from "./pages/practice/PracticePage";
+import SusunKataPage from "./pages/Tantangan/SusunKataPage";
+import PracticePage from "./pages/praktek/PracticePage";
 import PeringkatPage from "./pages/peringkat/peringkatPage";
 
 function App() {
@@ -37,6 +37,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/belajar" element={<BelajarPage />} />
+        <Route path="/modul" element={<ModulePage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
