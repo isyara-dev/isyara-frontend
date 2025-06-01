@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import apiClient from "../../services/api/apiClient";
 import HandGestureDetector from "../../components/gesture/HandGestureDetector";
-import { useAuth } from "../../contexts/AuthContext";
 
 // State machine constants
 const GAME_STATES = {
@@ -12,36 +11,25 @@ const GAME_STATES = {
   COMPLETED: "completed",
 };
 
-// Simple debounce function implementation
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    const context = this;
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(context, args), wait);
-  };
-}
-
-function SusunKataPage() {
+function PracticePage() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
-  const [word, setWord] = useState("");
-  const [letters, setLetters] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const { letterIndex = 0 } = useParams(); // Get the letter index from URL params
+  const currentLetterIdx = parseInt(letterIndex);
+
+  // Alphabet array - all available letters
+  const allLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+  const [currentLetter, setCurrentLetter] = useState(
+    allLetters[currentLetterIdx]
+  );
   const [currentHint, setCurrentHint] = useState(null);
-  const [points, setPoints] = useState(0);
-  const [bestScore, setBestScore] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [completedWordIds, setCompletedWordIds] = useState([]);
-  const [currentWordData, setCurrentWordData] = useState(null);
   const [gameState, setGameState] = useState(GAME_STATES.IDLE);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [correctGesture, setCorrectGesture] = useState(false);
   const [incorrectGesture, setIncorrectGesture] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Refs for tracking state without triggering rerenders
-  const currentIndexRef = useRef(0);
-  const lettersRef = useRef([]);
   const gameStateRef = useRef(GAME_STATES.IDLE);
   const lastDetectedGestureRef = useRef(null);
   const completedRef = useRef(false);
@@ -59,86 +47,42 @@ function SusunKataPage() {
   const GESTURE_DETECTION_TIME = 2000; // 2 seconds
 
   // Add a state to track the letter being animated
-  const [animatingLetterIndex, setAnimatingLetterIndex] = useState(null);
+  const [animatingLetter, setAnimatingLetter] = useState(false);
   const animationTimeoutRef = useRef(null);
 
-  // Add a state to track if we're transitioning to a new word
-  const [isTransitioningWord, setIsTransitioningWord] = useState(false);
-
-  // Fetch user profile to get best score
-  const fetchUserProfile = useCallback(async () => {
+  // Initialize letter and fetch hint
+  const initializeLetter = useCallback(async () => {
     try {
-      const userData = await apiClient.getUserProfile();
-      if (userData && userData.score) {
-        console.log("Fetched user best score:", userData.score);
-        setBestScore(userData.score);
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-    }
-  }, []);
-
-  // Initial load - fetch user profile and best score
-  useEffect(() => {
-    fetchUserProfile();
-  }, [fetchUserProfile]);
-
-  // Update best score when currentUser changes
-  useEffect(() => {
-    if (currentUser && currentUser.score) {
-      setBestScore(currentUser.score);
-    }
-  }, [currentUser]);
-
-  // Fetch random word - memoized to prevent recreating on every render
-  const fetchRandomWord = useCallback(async () => {
-    try {
-      console.log("Fetching new random word...");
+      console.log(`Initializing letter: ${currentLetter}`);
       setIsLoading(true);
       setGameState(GAME_STATES.IDLE);
       gameStateRef.current = GAME_STATES.IDLE;
       completedRef.current = false;
 
-      const response = await apiClient.get("/words/random");
-      const wordData = response;
-
-      setCurrentWordData(wordData);
-      const wordStr = wordData.word.toUpperCase();
-      console.log("Fetched new word:", wordStr);
-
-      setWord(wordStr);
-      setLetters(wordStr.split(""));
-      lettersRef.current = wordStr.split("");
-
-      setCurrentIndex(0);
-      currentIndexRef.current = 0;
-
-      setIsLoading(false);
-      setGameState(GAME_STATES.DETECTING);
-      gameStateRef.current = GAME_STATES.DETECTING;
-
       // Reset last detected gesture
       lastDetectedGestureRef.current = null;
 
       // Reset animation state
-      setAnimatingLetterIndex(null);
-      setIsTransitioningWord(false);
+      setAnimatingLetter(false);
 
-      // Fetch initial hint
-      fetchHint(wordStr.split("")[0]);
+      // Fetch hint for the current letter
+      await fetchHint(currentLetter);
+
+      setIsLoading(false);
+      setGameState(GAME_STATES.DETECTING);
+      gameStateRef.current = GAME_STATES.DETECTING;
     } catch (error) {
-      console.error("Error fetching random word:", error);
+      console.error("Error initializing letter:", error);
       setIsLoading(false);
       setGameState(GAME_STATES.IDLE);
       gameStateRef.current = GAME_STATES.IDLE;
-      setIsTransitioningWord(false);
     }
-  }, []);
+  }, [currentLetter]);
 
   // Initial load
   useEffect(() => {
-    fetchRandomWord();
-  }, [fetchRandomWord]);
+    initializeLetter();
+  }, [initializeLetter]);
 
   // Fetch hint for a specific letter
   const fetchHint = useCallback(async (letter) => {
@@ -163,108 +107,34 @@ function SusunKataPage() {
     }
   }, []);
 
-  // Handle word completion
-  const handleWordCompletion = useCallback(() => {
-    console.log("Handling word completion...");
-    if (currentWordData && !completedRef.current) {
+  // Handle letter completion
+  const handleLetterCompletion = useCallback(() => {
+    console.log("Handling letter completion...");
+    if (!completedRef.current) {
       completedRef.current = true;
-      setIsTransitioningWord(true);
-
-      // Add points
-      const newPoints = points + currentWordData.points;
-      console.log(
-        `Adding ${currentWordData.points} points. New total: ${newPoints}`
-      );
-      setPoints(newPoints);
-
-      // Update best score if current score is higher
-      if (newPoints > bestScore) {
-        setBestScore(newPoints);
-      }
-
-      // Add word ID to completed words
-      setCompletedWordIds((prev) => {
-        const newIds = [...prev, currentWordData.id];
-        console.log("Updated completed word IDs:", newIds);
-        return newIds;
-      });
 
       // Show success message
       setShowSuccessMessage(true);
 
-      // Fetch next word after a delay
+      // Hide success message after a shorter delay (reduced from 2000ms to 1000ms)
       setTimeout(() => {
         setShowSuccessMessage(false);
 
-        // Reset only what's needed for the next word
-        setDetectedGesture(null);
-        setGestureConfidence(0);
-        setGestureDetectionProgress(0);
-        setIsCorrectGesture(false);
-        setIsIncorrectGesture(false);
+        // Reset feedback states to allow continued practice
         setCorrectGesture(false);
-        setIncorrectGesture(false);
-
-        // Fetch new word without resetting camera
-        fetchRandomWord();
-      }, 2000);
-    }
-  }, [currentWordData, fetchRandomWord, points, bestScore]);
-
-  // Move to next letter with improved animation
-  const moveToNextLetter = useCallback(() => {
-    const nextIndex = currentIndexRef.current + 1;
-
-    // Set the current letter as animating
-    setAnimatingLetterIndex(currentIndexRef.current);
-
-    // Clear any existing animation timeout
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
-    }
-
-    // Schedule animation completion
-    animationTimeoutRef.current = setTimeout(() => {
-      // Animation completed
-      if (isTransitioningWord) {
-        // Skip further processing if we're already transitioning words
-        return;
-      }
-
-      setAnimatingLetterIndex(null);
-
-      if (nextIndex < lettersRef.current.length) {
-        // Move to next letter
-        console.log(`Moving to next letter: ${lettersRef.current[nextIndex]}`);
-        setCurrentIndex(nextIndex);
-        currentIndexRef.current = nextIndex;
-
-        // Fetch hint for next letter
-        fetchHint(lettersRef.current[nextIndex]);
-
-        // Return to detecting state
         setGameState(GAME_STATES.DETECTING);
         gameStateRef.current = GAME_STATES.DETECTING;
+        completedRef.current = false;
 
-        // Reset gesture states for next letter
+        // Reset gesture detection states
         setDetectedGesture(null);
         setGestureConfidence(0);
         setGestureDetectionProgress(0);
         setIsCorrectGesture(false);
         setIsIncorrectGesture(false);
-        setCorrectGesture(false);
-        setIncorrectGesture(false);
-      } else {
-        // Word completed
-        console.log("Word completed! All letters done.");
-        setGameState(GAME_STATES.COMPLETED);
-        gameStateRef.current = GAME_STATES.COMPLETED;
-
-        // Handle word completion
-        handleWordCompletion();
-      }
-    }, 800); // Animation duration - longer to ensure visibility
-  }, [fetchHint, handleWordCompletion, isTransitioningWord]);
+      }, 1000); // Reduced delay from 2000ms to 1000ms
+    }
+  }, []);
 
   // Show correct gesture feedback
   const showCorrectGestureFeedback = useCallback(() => {
@@ -287,12 +157,11 @@ function SusunKataPage() {
   // Handle gesture detection
   const handleGestureDetected = useCallback(
     (gesture, confidenceValue) => {
-      // Don't process gestures if we're in completed state, animating, or transitioning words
+      // Don't process gestures if we're in completed state or animating
       if (
         gameStateRef.current === GAME_STATES.COMPLETED ||
         completedRef.current ||
-        animatingLetterIndex !== null ||
-        isTransitioningWord
+        animatingLetter
       ) {
         return;
       }
@@ -329,8 +198,6 @@ function SusunKataPage() {
 
       // Only process if we're in detecting state
       if (gameStateRef.current === GAME_STATES.DETECTING) {
-        const currentLetter = lettersRef.current[currentIndexRef.current];
-
         // Check if the gesture matches the current letter
         if (gesture === currentLetter) {
           // Set correct gesture state
@@ -370,8 +237,10 @@ function SusunKataPage() {
                 // Show correct gesture feedback animation
                 showCorrectGestureFeedback();
 
-                // Move to next letter with animation
-                moveToNextLetter();
+                // Mark as completed
+                setGameState(GAME_STATES.COMPLETED);
+                gameStateRef.current = GAME_STATES.COMPLETED;
+                handleLetterCompletion();
               }
             }, 100);
           }
@@ -404,10 +273,10 @@ function SusunKataPage() {
       }
     },
     [
-      moveToNextLetter,
+      currentLetter,
+      handleLetterCompletion,
       showCorrectGestureFeedback,
       showIncorrectGestureFeedback,
-      isTransitioningWord,
     ]
   );
 
@@ -423,66 +292,91 @@ function SusunKataPage() {
     };
   }, []);
 
-  // Submit completed words to backend and update user profile
-  const submitCompletedWords = useCallback(async () => {
-    if (completedWordIds.length === 0) {
-      // Don't submit if no words were completed
-      return;
-    }
+  // Handle back button click
+  const handleBackClick = useCallback(() => {
+    navigate("/belajar");
+  }, [navigate]);
 
-    try {
-      // Submit session to backend
-      await apiClient.post("/words/submit-session", {
-        word_ids: completedWordIds,
-      });
-      console.log("Session submitted successfully");
+  // Handle next button click
+  const handleNextClick = useCallback(() => {
+    const nextLetterIdx = currentLetterIdx + 1;
+    // Check if we have a next letter in our alphabet
+    if (nextLetterIdx < allLetters.length) {
+      const nextLetter = allLetters[nextLetterIdx];
 
-      // Fetch updated user profile to get latest best score
-      await fetchUserProfile();
-    } catch (error) {
-      console.error("Error submitting session:", error);
-    }
-  }, [completedWordIds, fetchUserProfile]);
+      // Update current letter first
+      setCurrentLetter(nextLetter);
 
-  // Handle finish button click
-  const handleFinishClick = useCallback(() => {
-    // Only submit if user has earned points
-    if (points > 0) {
-      // Submit completed words before navigating away
-      submitCompletedWords();
+      // Show loading while fetching new hint
+      setIsLoading(true);
+
+      // Reset gesture states
+      setDetectedGesture(null);
+      setGestureConfidence(0);
+      setGestureDetectionProgress(0);
+      setIsCorrectGesture(false);
+      setIsIncorrectGesture(false);
+      setCorrectGesture(false);
+      setIncorrectGesture(false);
+
+      // Reset game state
+      setGameState(GAME_STATES.IDLE);
+      gameStateRef.current = GAME_STATES.IDLE;
+      completedRef.current = false;
+
+      // Fetch hint for next letter
+      apiClient
+        .get(`/hands/${nextLetter}`)
+        .then((res) => {
+          setCurrentHint(res);
+          setIsLoading(false);
+          setGameState(GAME_STATES.DETECTING);
+          gameStateRef.current = GAME_STATES.DETECTING;
+        })
+        .catch((error) => {
+          console.error(`Error fetching hint for letter ${nextLetter}:`, error);
+          setIsLoading(false);
+        });
+
+      // Update URL without full navigation
+      window.history.pushState({}, "", `/praktek-huruf/${nextLetterIdx}`);
+    } else {
+      // If we've reached the end of the alphabet, go back to the module page
+      navigate("/modul");
     }
-    navigate("/modul");
-  }, [navigate, submitCompletedWords, points]);
+  }, [navigate, currentLetterIdx, allLetters]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-800 to-blue-700 text-white flex flex-col max-h-screen overflow-hidden">
-      {/* Header */}
-      <header className="flex justify-center items-center p-4 bg-indigo-900">
-        {/* Current and Best Score display (center) */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-blue-600/80 px-4 py-2 rounded font-bold">
-            <div className="text-xs opacity-80">Current</div>
-            <div className="text-lg font-bold">{points} pts</div>
-          </div>
+      {/* Header with back button on the left */}
+      <header className="flex justify-between items-center p-4 bg-indigo-900">
+        {/* Back button (left) */}
+        <button
+          onClick={handleBackClick}
+          className="flex items-center gap-2 bg-indigo-700 px-3 py-2 rounded hover:bg-indigo-600 transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          <span>Kembali</span>
+        </button>
 
-          <div className="flex items-center gap-2 bg-indigo-500 px-4 py-2 rounded font-bold">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-              />
-            </svg>
-            Best Score: {bestScore}
-          </div>
-        </div>
+        {/* Title (center) */}
+        <div className="text-xl font-bold">Praktek Huruf {currentLetter}</div>
+
+        {/* Empty div to balance the layout */}
+        <div className="w-24"></div>
       </header>
 
       {/* Main content - made responsive with flex-1 to take available space */}
@@ -502,7 +396,7 @@ function SusunKataPage() {
                 key="persistent-gesture-detector"
                 onGestureDetected={handleGestureDetected}
                 showDebugInfo={false}
-                active={!showSuccessMessage && !isTransitioningWord}
+                active={!showSuccessMessage}
               />
 
               {/* Detection status display */}
@@ -546,9 +440,7 @@ function SusunKataPage() {
               {showSuccessMessage && (
                 <div className="absolute inset-0 bg-green-500/70 flex flex-col items-center justify-center z-20">
                   <div className="text-4xl font-bold mb-4">Berhasil!</div>
-                  <div className="text-2xl">
-                    +{currentWordData?.points || 0} Poin
-                  </div>
+                  <div className="text-2xl">Huruf {currentLetter} dikuasai</div>
                 </div>
               )}
             </>
@@ -562,7 +454,7 @@ function SusunKataPage() {
           ) : currentHint ? (
             <>
               <div className="text-sm mb-2 bg-blue-600 px-2 py-1 rounded">
-                Huruf: {letters[currentIndex]}
+                Huruf: {currentLetter}
               </div>
               <img
                 src={currentHint.image_url}
@@ -577,50 +469,55 @@ function SusunKataPage() {
         </div>
       </main>
 
-      {/* Footer with word display and scores */}
+      {/* Footer with next button on the right */}
       <footer className="p-4">
-        {/* Word display with background card and scores */}
         <div className="bg-gradient-to-r from-purple-700 to-purple-800 rounded-xl p-4">
           <div className="flex items-center justify-between">
-            {/* Potential points (left) */}
-            <div className="bg-green-600/80 px-3 py-1 rounded-lg shadow-lg">
-              <div className="text-xs opacity-80">Potential</div>
-              <div className="text-lg font-bold">
-                +{currentWordData?.points || 0}
-              </div>
-            </div>
-
-            {/* Letters (center) */}
-            <div className="flex gap-2 text-4xl md:text-5xl font-bold tracking-widest px-2">
-              {letters.map((char, index) => (
-                <span
-                  key={index}
-                  className={`transition-all duration-500 transform
-                    ${
-                      index === currentIndex
-                        ? "text-white"
-                        : index < currentIndex
-                        ? "text-green-300"
-                        : "text-purple-300"
-                    }
-                    ${
-                      animatingLetterIndex === index
-                        ? "scale-150 text-green-400"
-                        : "scale-100"
-                    }
-                  `}
-                >
-                  {char}
-                </span>
-              ))}
-            </div>
-
-            {/* Finish button (right) */}
-            <button
-              onClick={handleFinishClick}
-              className="text-sm bg-indigo-700 px-3 py-1 rounded"
+            {/* Status (left) */}
+            <div
+              className={`px-3 py-1 rounded-lg text-sm font-medium 
+              ${
+                gameState === GAME_STATES.COMPLETED
+                  ? "bg-green-600"
+                  : "bg-blue-600"
+              }`}
             >
-              Selesai
+              {gameState === GAME_STATES.COMPLETED
+                ? "Selesai"
+                : "Belum Selesai"}
+            </div>
+
+            {/* Current letter (center) */}
+            <div className="text-4xl font-bold">{currentLetter}</div>
+
+            {/* Next button (right) */}
+            <button
+              onClick={handleNextClick}
+              className={`flex items-center gap-2 px-4 py-2 rounded text-white font-medium transition-colors
+                ${
+                  gameState === GAME_STATES.COMPLETED
+                    ? "bg-green-600 hover:bg-green-500"
+                    : "bg-indigo-700 hover:bg-indigo-600"
+                }`}
+              disabled={
+                gameState !== GAME_STATES.COMPLETED && !showSuccessMessage
+              }
+            >
+              <span>Lanjut</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M14 5l7 7m0 0l-7 7m7-7H3"
+                />
+              </svg>
             </button>
           </div>
         </div>
@@ -629,4 +526,4 @@ function SusunKataPage() {
   );
 }
 
-export default SusunKataPage;
+export default PracticePage;
