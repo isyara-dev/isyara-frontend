@@ -9,6 +9,10 @@ const apiClient = {
   addAuthHeader(headers = {}) {
     const token = authService.getAccessToken();
     if (token) {
+      console.log(
+        "Adding auth header with token:",
+        token.substring(0, 15) + "..."
+      );
       return {
         ...headers,
         Authorization: `Bearer ${token}`,

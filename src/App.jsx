@@ -14,6 +14,7 @@ import BelajarPage from "./pages/belajar/BelajarPage";
 import ModulePage from "./pages/module/ModulePage";
 import SusunKataPage from "./pages/Tantangan/SusunKataPage";
 import PracticePage from "./pages/praktek/PracticePage";
+import PeringkatPage from "./pages/peringkat/peringkatPage";
 
 function App() {
   useEffect(() => {
@@ -35,14 +36,15 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/belajar" element={<BelajarPage />} />
-        <Route path="/modul" element={<ModulePage />} />
-        <Route path="/susun-kata" element={<SusunKataPage />} />
-        <Route path="/praktek" element={<PracticePage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/belajar" element={<BelajarPage />} />
+          <Route path="/modul" element={<ModulePage />} />
+          <Route path="/susun-kata" element={<SusunKataPage />} />
+          <Route path="/praktek" element={<PracticePage />} />
+          <Route path="/peringkat" element={<PeringkatPage />} />
 
           {/* Default protected route */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

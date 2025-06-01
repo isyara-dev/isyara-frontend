@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../../services/api/apiClient";
 import HandGestureDetector from "../../components/gesture/HandGestureDetector";
+import { useAuth } from "../../contexts/AuthContext";
 
 // State machine constants
 const GAME_STATES = {
@@ -23,12 +24,13 @@ function debounce(func, wait) {
 
 function SusunKataPage() {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [word, setWord] = useState("");
   const [letters, setLetters] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentHint, setCurrentHint] = useState(null);
   const [points, setPoints] = useState(0);
-  const [bestScore, setBestScore] = useState(100); // Example best score
+  const [bestScore, setBestScore] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [completedWordIds, setCompletedWordIds] = useState([]);
   const [currentWordData, setCurrentWordData] = useState(null);
@@ -62,6 +64,31 @@ function SusunKataPage() {
 
   // Add a state to track if we're transitioning to a new word
   const [isTransitioningWord, setIsTransitioningWord] = useState(false);
+
+  // Fetch user profile to get best score
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const userData = await apiClient.getUserProfile();
+      if (userData && userData.score) {
+        console.log("Fetched user best score:", userData.score);
+        setBestScore(userData.score);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  }, []);
+
+  // Initial load - fetch user profile and best score
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
+  // Update best score when currentUser changes
+  useEffect(() => {
+    if (currentUser && currentUser.score) {
+      setBestScore(currentUser.score);
+    }
+  }, [currentUser]);
 
   // Fetch random word - memoized to prevent recreating on every render
   const fetchRandomWord = useCallback(async () => {
@@ -150,6 +177,11 @@ function SusunKataPage() {
       );
       setPoints(newPoints);
 
+      // Update best score if current score is higher
+      if (newPoints > bestScore) {
+        setBestScore(newPoints);
+      }
+
       // Add word ID to completed words
       setCompletedWordIds((prev) => {
         const newIds = [...prev, currentWordData.id];
@@ -177,7 +209,7 @@ function SusunKataPage() {
         fetchRandomWord();
       }, 2000);
     }
-  }, [currentWordData, fetchRandomWord, points]);
+  }, [currentWordData, fetchRandomWord, points, bestScore]);
 
   // Move to next letter with improved animation
   const moveToNextLetter = useCallback(() => {
@@ -391,7 +423,7 @@ function SusunKataPage() {
     };
   }, []);
 
-  // Submit completed words to backend
+  // Submit completed words to backend and update user profile
   const submitCompletedWords = useCallback(async () => {
     if (completedWordIds.length === 0) {
       // Don't submit if no words were completed
@@ -399,21 +431,28 @@ function SusunKataPage() {
     }
 
     try {
-      await apiClient.post("/api/word/submit-session", {
-        wordIds: completedWordIds,
+      // Submit session to backend
+      await apiClient.post("/words/submit-session", {
+        word_ids: completedWordIds,
       });
       console.log("Session submitted successfully");
+
+      // Fetch updated user profile to get latest best score
+      await fetchUserProfile();
     } catch (error) {
       console.error("Error submitting session:", error);
     }
-  }, [completedWordIds]);
+  }, [completedWordIds, fetchUserProfile]);
 
   // Handle finish button click
   const handleFinishClick = useCallback(() => {
-    // Submit completed words before navigating away
-    submitCompletedWords();
+    // Only submit if user has earned points
+    if (points > 0) {
+      // Submit completed words before navigating away
+      submitCompletedWords();
+    }
     navigate("/modul");
-  }, [navigate, submitCompletedWords]);
+  }, [navigate, submitCompletedWords, points]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-800 to-blue-700 text-white flex flex-col max-h-screen overflow-hidden">
