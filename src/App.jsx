@@ -12,9 +12,7 @@ import AuthCallback from "./pages/auth/AuthCallback";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BelajarPage from "./pages/belajar/BelajarPage";
 import ModulePage from "./pages/module/ModulePage";
-import SusunKataPage from "./pages/Tantangan/SusunKataPage";
-import PracticePage from "./pages/praktek/PracticePage";
-import PeringkatPage from "./pages/peringkat/peringkatPage";
+import ProfilePage from "./pages/profile/ProfilePage";
 
 function App() {
   useEffect(() => {
@@ -36,6 +34,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/belajar" element={<BelajarPage />} />
+        <Route path="/modul" element={<ModulePage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
@@ -43,6 +43,7 @@ function App() {
           <Route path="/belajar" element={<BelajarPage />} />
           <Route path="/modul" element={<ModulePage />} />
           <Route path="/susun-kata" element={<SusunKataPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/praktek" element={<PracticePage />} />
           <Route path="/peringkat" element={<PeringkatPage />} />
 
