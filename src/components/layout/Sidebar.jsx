@@ -1,13 +1,25 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function Sidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
   const menuItems = [
     { id: "belajar", label: "BELAJAR", path: "/belajar" },
-    { id: "papan-skor", label: "PAPAN SKOR", path: "/papan-skor" },
+    { id: "peringkat", label: "PAPAN SKOR", path: "/peringkat" },
     { id: "profile", label: "PROFILE", path: "/profile" },
-    { id: "pengaturan", label: "PENGATURAN", path: "/pengaturan" },
-    { id: "keluar", label: "KELUAR", path: "/keluar" },
+    { id: "dashboard", label: "DASHBOARD", path: "/dashboard" },
   ];
 
   return (
@@ -39,6 +51,14 @@ export default function Sidebar() {
             {item.label}
           </NavLink>
         ))}
+
+        {/* Tombol Keluar */}
+        <button
+          onClick={handleLogout}
+          className="text-left py-3 px-4 my-1 rounded-lg transition-all text-blue-100 hover:bg-blue-800 hover:text-white"
+        >
+          KELUAR
+        </button>
       </nav>
 
       {/* Footer */}

@@ -1,49 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import Button from "../../components/ui/Button";
 import apiClient from "../../services/api/apiClient";
-
-// Separate sidebar component to avoid hook issues
-const Sidebar = ({ onLogout }) => (
-  <div className="w-64 bg-blue-900 p-6 flex flex-col">
-    <div className="mb-8">
-      <h1 className="text-2xl font-bold text-yellow-400">ISYARA</h1>
-    </div>
-    <nav className="space-y-2">
-      <Link to="/belajar" className="block">
-        <div className="text-blue-300 px-4 py-3 hover:bg-blue-800 rounded-lg cursor-pointer">
-          BELAJAR
-        </div>
-      </Link>
-      <Link to="/papan-skor" className="block">
-        <div className="text-blue-300 px-4 py-3 hover:bg-blue-800 rounded-lg cursor-pointer">
-          PAPAN SKOR
-        </div>
-      </Link>
-      <Link to="/dashboard" className="block">
-        <div className="bg-yellow-400 text-black px-4 py-3 rounded-lg font-medium">
-          PROFILE
-        </div>
-      </Link>
-      <Link to="/pengaturan" className="block">
-        <div className="text-blue-300 px-4 py-3 hover:bg-blue-800 rounded-lg cursor-pointer">
-          PENGATURAN
-        </div>
-      </Link>
-      <div
-        className="text-blue-300 px-4 py-3 hover:bg-blue-800 rounded-lg cursor-pointer"
-        onClick={onLogout}
-      >
-        KELUAR
-      </div>
-    </nav>
-    <div className="mt-auto">
-      <div className="text-yellow-400 text-sm">ISYARA</div>
-      <div className="text-blue-300 text-xs">dicoding</div>
-    </div>
-  </div>
-);
+import Sidebar from "../../components/layout/Sidebar";
 
 const DashboardPage = () => {
   const { currentUser, logout, isAuthenticated } = useAuth();
@@ -206,7 +166,7 @@ const DashboardPage = () => {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-purple-800 text-white">
       {/* Sidebar */}
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar />
 
       {/* Main Content */}
       <main className="flex-1 p-8 flex flex-col">

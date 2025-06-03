@@ -11,11 +11,41 @@ import DashboardPage from "./pages/dashboard/DashboardPage";
 import AuthCallback from "./pages/auth/AuthCallback";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BelajarPage from "./pages/belajar/BelajarPage";
-import ModulePage from "./pages/module/ModulePage";
-import ProfilePage from "./pages/profile/ProfilePage";
-import SusunKataPage from "./pages/Tantangan/SusunKataPage";
-import PracticePage from "./pages/praktek/PracticePage";
-import PeringkatPage from "./pages/peringkat/peringkatPage";
+import SubmodulePage from "./pages/belajar/SubmodulePage";
+import ProfilePage from "./pages/pengaturan/ProfilePage";
+import SusunKataPage from "./pages/tantangan/SusunKataPage";
+import PracticePage from "./pages/belajar/PracticePage";
+import PeringkatPage from "./pages/peringkat/PeringkatPage";
+import { useAuth } from "./contexts/AuthContext";
+
+// Komponen untuk menangani logout
+const LogoutHandler = () => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleLogout = async () => {
+      try {
+        await logout();
+        navigate("/login");
+      } catch (error) {
+        console.error("Error signing out:", error);
+        navigate("/login");
+      }
+    };
+
+    handleLogout();
+  }, [logout, navigate]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-4">Logging out...</h2>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   useEffect(() => {
@@ -37,16 +67,26 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/belajar" element={<BelajarPage />} />
-        <Route path="/modul" element={<ModulePage />} />
+        <Route path="/keluar" element={<LogoutHandler />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/belajar" element={<BelajarPage />} />
-          <Route path="/modul" element={<ModulePage />} />
+          <Route path="/belajar/submodul" element={<SubmodulePage />} />
           <Route path="/susun-kata" element={<SusunKataPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/praktek/:subModuleId" element={<PracticePage />} />
+
+          {/*
+            Route alternatif untuk PracticePage: membutuhkan subModuleId
+            Digunakan oleh SubmodulePage saat huruf di klik,
+            DAN oleh tombol "Lanjut" di PracticePage itu sendiri.
+          */}
+          <Route
+            path="/praktek-huruf/:subModuleId"
+            element={<PracticePage />}
+          />
           <Route path="/praktek" element={<PracticePage />} />
           <Route path="/peringkat" element={<PeringkatPage />} />
 

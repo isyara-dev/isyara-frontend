@@ -13,21 +13,21 @@ const GAME_STATES = {
 
 function PracticePage() {
   const navigate = useNavigate();
-  const { letterIndex = 0 } = useParams(); // Get the letter index from URL params
-  const currentLetterIdx = parseInt(letterIndex);
+  const { subModuleId } = useParams(); // Get the subModuleId from URL params
 
-  // Alphabet array - all available letters
-  const allLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  // State untuk menyimpan data submodul dan modul
+  const [currentSubModule, setCurrentSubModule] = useState(null);
+  const [allSubModules, setAllSubModules] = useState([]);
+  const [moduleId, setModuleId] = useState(null);
 
-  const [currentLetter, setCurrentLetter] = useState(
-    allLetters[currentLetterIdx]
-  );
+  const [currentLetter, setCurrentLetter] = useState("");
   const [currentHint, setCurrentHint] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [gameState, setGameState] = useState(GAME_STATES.IDLE);
   const [correctGesture, setCorrectGesture] = useState(false);
   const [incorrectGesture, setIncorrectGesture] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [progressUpdated, setProgressUpdated] = useState(false);
 
   // Refs for tracking state without triggering rerenders
   const gameStateRef = useRef(GAME_STATES.IDLE);
@@ -50,39 +50,51 @@ function PracticePage() {
   const [animatingLetter, setAnimatingLetter] = useState(false);
   const animationTimeoutRef = useRef(null);
 
-  // Initialize letter and fetch hint
-  const initializeLetter = useCallback(async () => {
-    try {
-      console.log(`Initializing letter: ${currentLetter}`);
-      setIsLoading(true);
-      setGameState(GAME_STATES.IDLE);
-      gameStateRef.current = GAME_STATES.IDLE;
-      completedRef.current = false;
-
-      // Reset last detected gesture
-      lastDetectedGestureRef.current = null;
-
-      // Reset animation state
-      setAnimatingLetter(false);
-
-      // Fetch hint for the current letter
-      await fetchHint(currentLetter);
-
-      setIsLoading(false);
-      setGameState(GAME_STATES.DETECTING);
-      gameStateRef.current = GAME_STATES.DETECTING;
-    } catch (error) {
-      console.error("Error initializing letter:", error);
-      setIsLoading(false);
-      setGameState(GAME_STATES.IDLE);
-      gameStateRef.current = GAME_STATES.IDLE;
-    }
-  }, [currentLetter]);
-
-  // Initial load
+  // Fetch submodule data and all submodules in the same module
   useEffect(() => {
-    initializeLetter();
-  }, [initializeLetter]);
+    const fetchSubModuleData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fetch all submodules
+        const allSubModulesData = await apiClient.get("/progress/sub");
+
+        // Find the current submodule
+        const currentSub = allSubModulesData.find(
+          (sub) => sub.id === parseInt(subModuleId)
+        );
+
+        if (!currentSub) {
+          throw new Error("Submodul tidak ditemukan");
+        }
+
+        setCurrentSubModule(currentSub);
+        setCurrentLetter(currentSub.name);
+        setModuleId(currentSub.module_id);
+
+        // Filter all submodules in the same module
+        const sameModuleSubModules = allSubModulesData.filter(
+          (sub) => sub.module_id === currentSub.module_id
+        );
+
+        // Sort by order_index
+        sameModuleSubModules.sort((a, b) => a.order_index - b.order_index);
+        setAllSubModules(sameModuleSubModules);
+
+        // Fetch hint for the current letter
+        await fetchHint(currentSub.name);
+
+        setIsLoading(false);
+        setGameState(GAME_STATES.DETECTING);
+        gameStateRef.current = GAME_STATES.DETECTING;
+      } catch (error) {
+        console.error("Error fetching submodule data:", error);
+        setIsLoading(false);
+      }
+    };
+
+    fetchSubModuleData();
+  }, [subModuleId]);
 
   // Fetch hint for a specific letter
   const fetchHint = useCallback(async (letter) => {
@@ -96,6 +108,32 @@ function PracticePage() {
       console.error(`Error fetching hint for letter ${letter}:`, error);
     }
   }, []);
+
+  // Update progress to API
+  const updateProgress = useCallback(async () => {
+    if (!currentSubModule || currentSubModule.is_completed || progressUpdated)
+      return;
+
+    try {
+      console.log("Updating progress for submodule:", currentSubModule.id);
+      const response = await apiClient.post("/progress", {
+        sub_module_id: currentSubModule.id,
+        is_completed: true,
+      });
+
+      console.log("Progress updated:", response);
+
+      // Update local state to reflect completion
+      setCurrentSubModule((prev) => ({
+        ...prev,
+        is_completed: true,
+      }));
+
+      setProgressUpdated(true);
+    } catch (error) {
+      console.error("Error updating progress:", error);
+    }
+  }, [currentSubModule, progressUpdated]);
 
   // Play sound effect for correct gesture
   const playCorrectSound = useCallback(() => {
@@ -113,10 +151,19 @@ function PracticePage() {
     if (!completedRef.current) {
       completedRef.current = true;
 
+      // Update progress to API if not completed yet
+      if (
+        currentSubModule &&
+        !currentSubModule.is_completed &&
+        !progressUpdated
+      ) {
+        updateProgress();
+      }
+
       // Show success message
       setShowSuccessMessage(true);
 
-      // Hide success message after a shorter delay (reduced from 2000ms to 1000ms)
+      // Hide success message after a shorter delay
       setTimeout(() => {
         setShowSuccessMessage(false);
 
@@ -132,9 +179,9 @@ function PracticePage() {
         setGestureDetectionProgress(0);
         setIsCorrectGesture(false);
         setIsIncorrectGesture(false);
-      }, 1000); // Reduced delay from 2000ms to 1000ms
+      }, 1000);
     }
-  }, []);
+  }, [currentSubModule, updateProgress, progressUpdated]);
 
   // Show correct gesture feedback
   const showCorrectGestureFeedback = useCallback(() => {
@@ -277,6 +324,7 @@ function PracticePage() {
       handleLetterCompletion,
       showCorrectGestureFeedback,
       showIncorrectGestureFeedback,
+      animatingLetter,
     ]
   );
 
@@ -294,57 +342,44 @@ function PracticePage() {
 
   // Handle back button click
   const handleBackClick = useCallback(() => {
-    navigate("/belajar");
-  }, [navigate]);
+    if (moduleId) {
+      // Pastikan moduleId sudah ada sebelum navigasi
+      navigate(`/belajar/submodul/${moduleId}`);
+    } else {
+      // Fallback jika moduleId belum ada (seharusnya tidak terjadi jika data sudah dimuat)
+      navigate("/belajar");
+      console.warn(
+        "moduleId tidak ditemukan, kembali ke halaman belajar utama."
+      );
+    }
+  }, [navigate, moduleId]);
+  // const handleBackClick = useCallback(() => {
+  //   navigate(`/belajar`);
+  // }, [navigate]);
 
   // Handle next button click
   const handleNextClick = useCallback(() => {
-    const nextLetterIdx = currentLetterIdx + 1;
-    // Check if we have a next letter in our alphabet
-    if (nextLetterIdx < allLetters.length) {
-      const nextLetter = allLetters[nextLetterIdx];
+    if (!currentSubModule || !allSubModules.length) return;
 
-      // Update current letter first
-      setCurrentLetter(nextLetter);
+    // Find current index in allSubModules
+    const currentIndex = allSubModules.findIndex(
+      (sub) => sub.id === currentSubModule.id
+    );
 
-      // Show loading while fetching new hint
-      setIsLoading(true);
+    // Check if we have a next submodule in our list
+    if (currentIndex < allSubModules.length - 1) {
+      const nextSubModule = allSubModules[currentIndex + 1];
 
-      // Reset gesture states
-      setDetectedGesture(null);
-      setGestureConfidence(0);
-      setGestureDetectionProgress(0);
-      setIsCorrectGesture(false);
-      setIsIncorrectGesture(false);
-      setCorrectGesture(false);
-      setIncorrectGesture(false);
+      // Navigate to the next submodule
+      navigate(`/praktek-huruf/${nextSubModule.id}`);
 
-      // Reset game state
-      setGameState(GAME_STATES.IDLE);
-      gameStateRef.current = GAME_STATES.IDLE;
-      completedRef.current = false;
-
-      // Fetch hint for next letter
-      apiClient
-        .get(`/hands/${nextLetter}`)
-        .then((res) => {
-          setCurrentHint(res);
-          setIsLoading(false);
-          setGameState(GAME_STATES.DETECTING);
-          gameStateRef.current = GAME_STATES.DETECTING;
-        })
-        .catch((error) => {
-          console.error(`Error fetching hint for letter ${nextLetter}:`, error);
-          setIsLoading(false);
-        });
-
-      // Update URL without full navigation
-      window.history.pushState({}, "", `/praktek-huruf/${nextLetterIdx}`);
+      // Reset progress updated flag for the next submodule
+      setProgressUpdated(false);
     } else {
-      // If we've reached the end of the alphabet, go back to the module page
-      navigate("/modul");
+      // If we've reached the end of the submodules, go back to the module page
+      navigate(`/belajar`);
     }
-  }, [navigate, currentLetterIdx, allLetters]);
+  }, [navigate, currentSubModule, allSubModules]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-800 to-blue-700 text-white flex flex-col max-h-screen overflow-hidden">
@@ -389,7 +424,10 @@ function PracticePage() {
             ${correctGesture ? "border-4 border-green-500" : ""}`}
         >
           {isLoading ? (
-            <p>Loading camera...</p>
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-300 mb-4"></div>
+              <p>Memuat kamera...</p>
+            </div>
           ) : (
             <>
               <HandGestureDetector
@@ -415,7 +453,7 @@ function PracticePage() {
                 {detectedGesture ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span>{`Detected: ${detectedGesture}`}</span>
+                      <span>{`Terdeteksi: ${detectedGesture}`}</span>
                       <span className="ml-2">
                         {`${Math.round(gestureConfidence * 100)}%`}
                       </span>
@@ -432,7 +470,7 @@ function PracticePage() {
                     )}
                   </>
                 ) : (
-                  "No gesture detected"
+                  "Tidak ada gerakan terdeteksi"
                 )}
               </div>
 
@@ -450,7 +488,10 @@ function PracticePage() {
         {/* Hint image (right) */}
         <div className="flex flex-col justify-center items-center bg-blue-700 rounded-xl h-full">
           {isLoading ? (
-            <p>Loading hint...</p>
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-300 mb-4"></div>
+              <p>Memuat petunjuk...</p>
+            </div>
           ) : currentHint ? (
             <>
               <div className="text-sm mb-2 bg-blue-600 px-2 py-1 rounded">
@@ -464,7 +505,7 @@ function PracticePage() {
               <p className="text-lg">{currentHint.description}</p>
             </>
           ) : (
-            <p>No hint available</p>
+            <p>Petunjuk tidak tersedia</p>
           )}
         </div>
       </main>
@@ -477,12 +518,14 @@ function PracticePage() {
             <div
               className={`px-3 py-1 rounded-lg text-sm font-medium 
               ${
-                gameState === GAME_STATES.COMPLETED
+                gameState === GAME_STATES.COMPLETED ||
+                currentSubModule?.is_completed
                   ? "bg-green-600"
                   : "bg-blue-600"
               }`}
             >
-              {gameState === GAME_STATES.COMPLETED
+              {gameState === GAME_STATES.COMPLETED ||
+              currentSubModule?.is_completed
                 ? "Selesai"
                 : "Belum Selesai"}
             </div>
@@ -495,12 +538,15 @@ function PracticePage() {
               onClick={handleNextClick}
               className={`flex items-center gap-2 px-4 py-2 rounded text-white font-medium transition-colors
                 ${
-                  gameState === GAME_STATES.COMPLETED
+                  gameState === GAME_STATES.COMPLETED ||
+                  currentSubModule?.is_completed
                     ? "bg-green-600 hover:bg-green-500"
                     : "bg-indigo-700 hover:bg-indigo-600"
                 }`}
               disabled={
-                gameState !== GAME_STATES.COMPLETED && !showSuccessMessage
+                gameState !== GAME_STATES.COMPLETED &&
+                !showSuccessMessage &&
+                !currentSubModule?.is_completed
               }
             >
               <span>Lanjut</span>
