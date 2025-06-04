@@ -42,6 +42,11 @@ const apiClient = {
                 body: originalRequest.body,
               });
             }
+          } else {
+            // Jika refresh gagal, logout dan redirect
+            authService.logout();
+            window.location.href = "/login";
+            throw new Error("Session expired. Please login again.");
           }
         } catch (refreshError) {
           // If refresh fails, logout

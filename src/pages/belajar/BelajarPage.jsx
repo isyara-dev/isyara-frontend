@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Sidebar from "../../components/layout/Sidebar";
 import { useNavigate } from "react-router-dom";
-import apiClient from "../../services/api/apiClient";
+import { useLearning } from "../../contexts/LearningContext";
 
 // SubmoduleCard Component
 const SubmoduleCard = ({ letter, status, imageUrl, onClick }) => {
@@ -82,78 +82,22 @@ const SubmoduleCard = ({ letter, status, imageUrl, onClick }) => {
 
 export default function BelajarPage() {
   const navigate = useNavigate();
-  const [activeModuleId, setActiveModuleId] = useState(null);
-  const [modules, setModules] = useState([]);
-  const [submodules, setSubmodules] = useState([]);
-  const [isLoadingModules, setIsLoadingModules] = useState(true);
-  const [isLoadingSubmodules, setIsLoadingSubmodules] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Default language ID adalah 1 (Bisindo)
-  const languageId = 1;
-
-  // Fetch modules
-  useEffect(() => {
-    const fetchModules = async () => {
-      try {
-        setIsLoadingModules(true);
-        const response = await apiClient.get(`/progress/module/${languageId}`);
-        setModules(response || []);
-      } catch (err) {
-        console.error("Gagal mengambil data modul:", err);
-        setError("Gagal memuat data modul");
-      } finally {
-        setIsLoadingModules(false);
-      }
-    };
-
-    fetchModules();
-  }, [languageId]);
-
-  // Fetch submodules when a module is selected
-  useEffect(() => {
-    const fetchSubmodules = async () => {
-      if (!activeModuleId) return;
-
-      try {
-        setIsLoadingSubmodules(true);
-        const response = await apiClient.get("/progress/sub");
-
-        // Filter submodules berdasarkan module_id yang aktif
-        const filteredSubmodules = response.filter(
-          (submodule) => submodule.module_id === parseInt(activeModuleId)
-        );
-
-        // Sort by order_index
-        filteredSubmodules.sort((a, b) => a.order_index - b.order_index);
-        setSubmodules(filteredSubmodules);
-      } catch (err) {
-        console.error("Gagal mengambil data submodul:", err);
-        setError("Gagal memuat data submodul");
-      } finally {
-        setIsLoadingSubmodules(false);
-      }
-    };
-
-    fetchSubmodules();
-  }, [activeModuleId]);
-
-  const getProgressPercentage = (completed, total) => {
-    if (total === 0) return 0;
-    return Math.round((completed / total) * 100);
-  };
-
-  const handleModuleClick = (moduleId) => {
-    setActiveModuleId(moduleId);
-  };
+  const {
+    activeModuleId,
+    modules,
+    submodules,
+    isLoadingModules,
+    isLoadingSubmodules,
+    error,
+    getProgressPercentage,
+    handleModuleClick,
+    handleBackToModules,
+  } = useLearning();
 
   const handleSubmoduleClick = (submodule) => {
+    // Simpan moduleId di localStorage sebelum navigasi
+    localStorage.setItem("lastModuleId", submodule.module_id.toString());
     navigate(`/praktek/${submodule.id}`);
-  };
-
-  const handleBackToModules = () => {
-    setActiveModuleId(null);
-    setSubmodules([]);
   };
 
   return (

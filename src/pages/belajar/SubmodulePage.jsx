@@ -156,7 +156,9 @@ export default function SubmodulePage() {
   };
 
   const handleSubmoduleClick = (submodule) => {
-    navigate(`/praktek-huruf/${submodule.id}`);
+    // Simpan moduleId di localStorage sebelum navigasi
+    localStorage.setItem("activeModuleId", moduleId);
+    navigate(`/praktek/${submodule.id}`);
   };
 
   return (

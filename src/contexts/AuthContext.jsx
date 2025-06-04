@@ -216,6 +216,56 @@ export const AuthProvider = ({ children }) => {
     };
   }, [saveGoogleUser, logger]);
 
+  // Pindahkan definisi fungsi logout ke atas sebelum useEffect
+  // Gunakan useCallback untuk mendefinisikan fungsi logout
+  const logout = useCallback(async () => {
+    try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      // Clear local storage
+      authService.logout();
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setError("Failed to sign out");
+    }
+  }, []);
+
+  // Kemudian gunakan fungsi logout dalam useEffect untuk pemeriksaan session
+  useEffect(() => {
+    // Jika tidak ada user yang terautentikasi, tidak perlu memeriksa
+    if (!isAuthenticated || !currentUser) {
+      return;
+    }
+
+    // Interval untuk memeriksa session setiap 5 menit
+    const sessionCheckInterval = setInterval(async () => {
+      try {
+        // Periksa session dari Supabase
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        // Jika tidak ada session valid, logout user
+        if (!session) {
+          console.log("Session tidak valid atau habis, melakukan logout...");
+          await logout();
+          // Tidak perlu redirect di sini, ProtectedRoute akan menanganinya
+        }
+      } catch (error) {
+        console.error("Error memeriksa session:", error);
+        // Jika terjadi error saat memeriksa session, anggap session tidak valid
+        await logout();
+      }
+    }, 5 * 60 * 1000); // Periksa setiap 5 menit
+
+    // Cleanup interval saat komponen unmount
+    return () => {
+      clearInterval(sessionCheckInterval);
+    };
+  }, [isAuthenticated, currentUser, logout]);
+
   // Login method
   const login = async (email, password) => {
     setLoading(true);
@@ -249,21 +299,6 @@ export const AuthProvider = ({ children }) => {
       throw error;
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Logout method
-  const logout = async () => {
-    try {
-      // Sign out from Supabase
-      await supabase.auth.signOut();
-      // Clear local storage
-      authService.logout();
-      setCurrentUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error("Error signing out:", error);
-      setError("Failed to sign out");
     }
   };
 

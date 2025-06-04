@@ -18,8 +18,8 @@ export default function Sidebar() {
   const menuItems = [
     { id: "belajar", label: "BELAJAR", path: "/belajar" },
     { id: "peringkat", label: "PAPAN SKOR", path: "/peringkat" },
-    { id: "profile", label: "PROFILE", path: "/profile" },
     { id: "dashboard", label: "DASHBOARD", path: "/dashboard" },
+    { id: "pengaturan", label: "PENGATURAN", path: "/profile" },
   ];
 
   return (

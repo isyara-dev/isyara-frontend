@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useNavigate,
 } from "react-router-dom";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -17,6 +18,7 @@ import SusunKataPage from "./pages/tantangan/SusunKataPage";
 import PracticePage from "./pages/belajar/PracticePage";
 import PeringkatPage from "./pages/peringkat/PeringkatPage";
 import { useAuth } from "./contexts/AuthContext";
+import { LearningProvider } from "./contexts/LearningContext";
 
 // Komponen untuk menangani logout
 const LogoutHandler = () => {
@@ -47,6 +49,27 @@ const LogoutHandler = () => {
   );
 };
 
+// Komponen untuk membungkus protected routes dengan LearningProvider
+const ProtectedRoutesWithLearning = () => {
+  return (
+    <LearningProvider>
+      <Routes>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/belajar" element={<BelajarPage />} />
+        <Route path="/belajar/submodul/:moduleId" element={<SubmodulePage />} />
+        <Route path="/susun-kata" element={<SusunKataPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/praktek/:subModuleId" element={<PracticePage />} />
+        <Route path="/praktek" element={<PracticePage />} />
+        <Route path="/peringkat" element={<PeringkatPage />} />
+
+        {/* Default protected route */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </LearningProvider>
+  );
+};
+
 function App() {
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -69,29 +92,9 @@ function App() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/keluar" element={<LogoutHandler />} />
 
-        {/* Protected Routes */}
+        {/* Protected Routes with Learning Context */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/belajar" element={<BelajarPage />} />
-          <Route path="/belajar/submodul" element={<SubmodulePage />} />
-          <Route path="/susun-kata" element={<SusunKataPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/praktek/:subModuleId" element={<PracticePage />} />
-
-          {/*
-            Route alternatif untuk PracticePage: membutuhkan subModuleId
-            Digunakan oleh SubmodulePage saat huruf di klik,
-            DAN oleh tombol "Lanjut" di PracticePage itu sendiri.
-          */}
-          <Route
-            path="/praktek-huruf/:subModuleId"
-            element={<PracticePage />}
-          />
-          <Route path="/praktek" element={<PracticePage />} />
-          <Route path="/peringkat" element={<PeringkatPage />} />
-
-          {/* Default protected route */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/*" element={<ProtectedRoutesWithLearning />} />
         </Route>
 
         {/* Catch-all route */}

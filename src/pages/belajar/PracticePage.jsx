@@ -72,6 +72,9 @@ function PracticePage() {
         setCurrentLetter(currentSub.name);
         setModuleId(currentSub.module_id);
 
+        // Store moduleId in localStorage for navigation back
+        localStorage.setItem("activeModuleId", currentSub.module_id.toString());
+
         // Filter all submodules in the same module
         const sameModuleSubModules = allSubModulesData.filter(
           (sub) => sub.module_id === currentSub.module_id
@@ -344,18 +347,17 @@ function PracticePage() {
   const handleBackClick = useCallback(() => {
     if (moduleId) {
       // Pastikan moduleId sudah ada sebelum navigasi
-      navigate(`/belajar/submodul/${moduleId}`);
+      // Simpan moduleId di localStorage agar BelajarPage bisa menampilkan submodul yang tepat
+      localStorage.setItem("activeModuleId", moduleId.toString());
+      navigate(`/belajar`);
     } else {
-      // Fallback jika moduleId belum ada (seharusnya tidak terjadi jika data sudah dimuat)
+      // Fallback jika moduleId belum ada
       navigate("/belajar");
       console.warn(
         "moduleId tidak ditemukan, kembali ke halaman belajar utama."
       );
     }
   }, [navigate, moduleId]);
-  // const handleBackClick = useCallback(() => {
-  //   navigate(`/belajar`);
-  // }, [navigate]);
 
   // Handle next button click
   const handleNextClick = useCallback(() => {
@@ -371,15 +373,19 @@ function PracticePage() {
       const nextSubModule = allSubModules[currentIndex + 1];
 
       // Navigate to the next submodule
-      navigate(`/praktek-huruf/${nextSubModule.id}`);
+      navigate(`/praktek/${nextSubModule.id}`);
 
       // Reset progress updated flag for the next submodule
       setProgressUpdated(false);
     } else {
       // If we've reached the end of the submodules, go back to the module page
+      // Pastikan moduleId disimpan untuk navigasi kembali
+      if (moduleId) {
+        localStorage.setItem("activeModuleId", moduleId.toString());
+      }
       navigate(`/belajar`);
     }
-  }, [navigate, currentSubModule, allSubModules]);
+  }, [navigate, currentSubModule, allSubModules, moduleId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-800 to-blue-700 text-white flex flex-col max-h-screen overflow-hidden">
