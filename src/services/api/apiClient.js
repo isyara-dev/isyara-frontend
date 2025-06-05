@@ -142,6 +142,7 @@ const apiClient = {
 
   // Convenience methods for different HTTP methods
   get(endpoint, options = {}) {
+    console.log(`ApiClient: GET request ke ${endpoint}`);
     return this.fetch(endpoint, { ...options, method: "GET" });
   },
 
