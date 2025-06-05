@@ -11,14 +11,16 @@ import Register from "./pages/auth/Register";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import AuthCallback from "./pages/auth/AuthCallback";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import BelajarPage from "./pages/belajar/BelajarPage";
-import SubmodulePage from "./pages/belajar/SubmodulePage";
-import ProfilePage from "./pages/pengaturan/ProfilePage";
-import SusunKataPage from "./pages/tantangan/SusunKataPage";
 import PracticePage from "./pages/belajar/PracticePage";
 import PeringkatPage from "./pages/peringkat/PeringkatPage";
+import ProfilePage from "./pages/pengaturan/ProfilePage";
+import SusunKataPage from "./pages/tantangan/SusunKataPage";
 import { useAuth } from "./contexts/AuthContext";
 import { LearningProvider } from "./contexts/LearningContext";
+
+// Import presenters
+import BelajarPresenter from "./presenters/BelajarPresenter";
+import SubmodulePresenter from "./presenters/SubmodulePresenter";
 
 // Komponen untuk menangani logout
 const LogoutHandler = () => {
@@ -55,8 +57,11 @@ const ProtectedRoutesWithLearning = () => {
     <LearningProvider>
       <Routes>
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/belajar" element={<BelajarPage />} />
-        <Route path="/belajar/submodul/:moduleId" element={<SubmodulePage />} />
+        <Route path="/belajar" element={<BelajarPresenter />} />
+        <Route
+          path="/belajar/submodul/:moduleId"
+          element={<SubmodulePresenter />}
+        />
         <Route path="/susun-kata" element={<SusunKataPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/praktek/:subModuleId" element={<PracticePage />} />
