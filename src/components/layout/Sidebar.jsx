@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Book, Trophy, LayoutDashboard, Settings, LogOut } from "lucide-react";
+import Button from "../ui/Button";
 
 export default function Sidebar() {
   const { logout } = useAuth();
@@ -133,13 +134,14 @@ export default function Sidebar() {
         })}
 
         {/* Tombol Keluar */}
-        <button
+        <Button
           onClick={handleLogout}
-          className="text-left py-3 px-4 my-1 mt-auto rounded-lg transition-all text-text-light hover:bg-primary flex items-center gap-3 w-full"
+          variant="text"
+          className="my-1 mt-auto flex items-center gap-3"
         >
           <LogOut size={20} />
           <span>KELUAR</span>
-        </button>
+        </Button>
       </nav>
 
       {/* Footer */}

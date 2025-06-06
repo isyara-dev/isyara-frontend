@@ -19,6 +19,8 @@ const Button = ({
     outline:
       "border border-primary text-primary hover:bg-primary hover:bg-opacity-10",
     link: "bg-transparent text-primary hover:underline p-0",
+    text: "bg-transparent text-purple hover:cursor-pointer border-none text-left justify-start py-3 px-4 rounded-lg w-auto",
+    play: "bg-green-500 text-text-light hover:bg-green-600",
   };
 
   const widthClass = fullWidth ? "w-full" : "";

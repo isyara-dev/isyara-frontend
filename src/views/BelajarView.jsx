@@ -1,5 +1,7 @@
 import React from "react";
 import Sidebar from "../components/layout/Sidebar";
+import Button from "../components/ui/Button";
+import SubmoduleList from "../components/learning/SubmoduleList";
 
 // SubmoduleCard Component
 const SubmoduleCard = ({ letter, status, imageUrl, onClick }) => {
@@ -7,13 +9,13 @@ const SubmoduleCard = ({ letter, status, imageUrl, onClick }) => {
 
   return (
     <div
-      className="rounded-xl p-4 md:p-6 backdrop-blur-sm border border-green-500/30 hover:border-green-400/50 transition-all duration-200 hover:transform hover:scale-105 cursor-pointer shadow-lg"
+      className="rounded-xl p-4 md:p-6 shadow-md bg-primary cursor-pointer"
       onClick={onClick}
     >
       {/* Hand Image */}
       <div className="mb-3 md:mb-4 flex justify-center">
         {imageUrl ? (
-          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-cyan-400 to-green-500 flex items-center justify-center relative overflow-hidden">
+          <div className="w-12 h-12 md:w-16 md:h-16 rounded-md bg-gradient-to-br from-cyan-400 to-green-500 flex items-center justify-center relative overflow-hidden">
             <img
               src={imageUrl}
               alt={`Huruf ${letter}`}
@@ -21,7 +23,7 @@ const SubmoduleCard = ({ letter, status, imageUrl, onClick }) => {
             />
           </div>
         ) : (
-          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center">
+          <div className="w-12 h-12 md:w-16 md:h-16 rounded-md bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center">
             <svg viewBox="0 0 100 100" className="w-8 h-8 md:w-12 md:h-12">
               <path
                 d="M30 70 L30 45 Q30 40 35 40 Q40 40 40 45 L40 35 Q40 30 45 30 Q50 30 50 35 L50 25 Q50 20 55 20 Q60 20 60 25 L60 30 L65 30 Q70 30 70 35 L70 60 Q70 75 55 75 L35 75 Q30 75 30 70 Z"
@@ -93,6 +95,11 @@ const BelajarView = ({
   handleSubmoduleClick,
   handleChallengeClick,
 }) => {
+  // Dapatkan judul modul aktif jika ada
+  const activeModuleTitle =
+    modules.find((m) => m.module_id === activeModuleId)?.description ||
+    "Huruf-huruf";
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-background via-primary to-background flex flex-col md:flex-row">
       {/* Sidebar - akan otomatis responsif berdasarkan implementasi Sidebar.jsx */}
@@ -118,10 +125,11 @@ const BelajarView = ({
         {/* Page Header */}
         <header className="mb-6 md:mb-8">
           {activeModuleId ? (
-            <div className="flex flex-wrap items-center">
-              <button
+            <div className="flex flex-col items-start">
+              <Button
+                variant="text"
                 onClick={handleBackToModules}
-                className="flex items-center text-green-200 hover:text-white transition-colors mr-4 md:mr-6 bg-green-800/30 px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-green-700/30 mb-2 md:mb-0"
+                className="mr-3 md:mr-4 items-center hover:cursor-pointer py-2 px-3"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -136,8 +144,8 @@ const BelajarView = ({
                   />
                 </svg>
                 Kembali
-              </button>
-              <h1 className="text-xl md:text-3xl font-bold text-white">
+              </Button>
+              <h1 className="text-xl md:text-2xl px-3 font-bold text-white">
                 {modules.find((m) => m.module_id === activeModuleId)
                   ?.module_name || `Modul ${activeModuleId}`}
               </h1>
@@ -159,7 +167,7 @@ const BelajarView = ({
           // Tampilan Modul
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8 flex-grow">
             {/* Left Section - Module Groups */}
-            <div className="lg:col-span-3 rounded-xl p-4 md:p-6 border border-green-600/20">
+            <div className="lg:col-span-3 rounded-xl p-4 md:p-6">
               <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 text-white">
                 Modul Pembelajaran
               </h2>
@@ -175,7 +183,7 @@ const BelajarView = ({
                   {modules.map((module) => (
                     <div
                       key={module.module_id}
-                      className={`rounded-lg p-3 md:p-4 cursor-pointer transition-all hover:bg-green-800/10 border border-green-500/20 hover:border-green-500/40 ${
+                      className={`rounded-lg p-3 md:p-4 cursor-pointer shadow-md bg-secondary ${
                         activeModuleId === module.module_id
                           ? "ring-2 ring-green-400"
                           : ""
@@ -221,7 +229,7 @@ const BelajarView = ({
             </div>
 
             {/* Right Section - Challenge Section */}
-            <div className="rounded-xl p-4 md:p-6 border border-green-600/20 flex flex-col">
+            <div className="rounded-xl p-4 md:p-6 shadow-md bg-primary flex flex-col">
               <div className="flex flex-col h-full justify-between">
                 <div>
                   <h3 className="text-base md:text-lg font-bold mb-2 md:mb-3 text-center text-white">
@@ -238,48 +246,26 @@ const BelajarView = ({
                   </div>
                 </div>
                 <div className="flex justify-center">
-                  <button
-                    className="bg-green-600 hover:bg-green-700 text-white py-2 md:py-3 px-4 md:px-6 rounded-lg font-medium transition-colors w-full text-sm md:text-base"
+                  <Button
+                    variant="play"
+                    fullWidth
                     onClick={handleChallengeClick}
                   >
                     Mulai Tantangan!
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          // Tampilan Submodul
-          <div className="rounded-xl p-4 md:p-6 border border-green-600/20">
-            <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 text-white">
-              {modules.find((m) => m.module_id === activeModuleId)
-                ?.description || "Huruf-huruf"}
-            </h2>
-
-            {isLoadingSubmodules ? (
-              <div className="flex justify-center items-center h-40">
-                <div className="animate-spin rounded-full h-10 w-10 md:h-12 md:w-12 border-t-2 border-b-2 border-green-300"></div>
-              </div>
-            ) : error ? (
-              <div className="text-red-300 text-center py-4">{error}</div>
-            ) : submodules.length === 0 ? (
-              <div className="text-center py-8 text-white">
-                Tidak ada submodul yang tersedia
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
-                {submodules.map((submodule) => (
-                  <SubmoduleCard
-                    key={submodule.id}
-                    letter={submodule.name}
-                    status={submodule.is_completed}
-                    imageUrl={submodule.image_url}
-                    onClick={() => handleSubmoduleClick(submodule)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          // Tampilan Submodul - menggunakan komponen SubmoduleList
+          <SubmoduleList
+            moduleTitle={activeModuleTitle}
+            submodules={submodules}
+            isLoading={isLoadingSubmodules}
+            error={error}
+            onSubmoduleClick={handleSubmoduleClick}
+          />
         )}
       </main>
     </div>

@@ -58,10 +58,6 @@ const ProtectedRoutesWithLearning = () => {
       <Routes>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/belajar" element={<BelajarPresenter />} />
-        <Route
-          path="/belajar/submodul/:moduleId"
-          element={<SubmodulePresenter />}
-        />
         <Route path="/susun-kata" element={<SusunKataPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/praktek/:subModuleId" element={<PracticePage />} />
