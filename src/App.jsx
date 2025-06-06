@@ -14,7 +14,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BelajarPage from "./pages/belajar/BelajarPage";
 import SubmodulePage from "./pages/belajar/SubmodulePage";
 import ProfilePage from "./pages/pengaturan/ProfilePage";
-import SusunKataPage from "./pages/tantangan/SusunKataPage";
+import SusunKataPage from "./pages/Tantangan/SusunKataPage";
 import PracticePage from "./pages/belajar/PracticePage";
 import PeringkatPage from "./pages/peringkat/PeringkatPage";
 import { useAuth } from "./contexts/AuthContext";
