@@ -1,13 +1,25 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function Sidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
   const menuItems = [
-    { id: 'belajar', label: 'BELAJAR', path: '/belajar' },
-    { id: 'papan-skor', label: 'PAPAN SKOR', path: '/papan-skor' },
-    { id: 'profile', label: 'PROFILE', path: '/profile' },
-    { id: 'pengaturan', label: 'PENGATURAN', path: '/pengaturan' },
-    { id: 'keluar', label: 'KELUAR', path: '/keluar' },
+    { id: "belajar", label: "BELAJAR", path: "/belajar" },
+    { id: "peringkat", label: "PAPAN SKOR", path: "/peringkat" },
+    { id: "dashboard", label: "DASHBOARD", path: "/dashboard" },
+    { id: "pengaturan", label: "PENGATURAN", path: "/profile" },
   ];
 
   return (
@@ -18,10 +30,9 @@ export default function Sidebar() {
           <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-400">
             ISYARA
           </h1>
-          
         </div>
       </div>
-      
+
       {/* Navigation Menu */}
       <nav className="flex flex-col flex-grow p-4">
         {menuItems.map((item) => (
@@ -30,14 +41,24 @@ export default function Sidebar() {
             to={item.path}
             className={({ isActive }) => `
               text-left py-3 px-4 my-1 rounded-lg transition-all
-              ${isActive 
-                ? 'bg-yellow-500 text-blue-900 font-semibold shadow-md' 
-                : 'text-blue-100 hover:bg-blue-800 hover:text-white'}
+              ${
+                isActive
+                  ? "bg-yellow-500 text-blue-900 font-semibold shadow-md"
+                  : "text-blue-100 hover:bg-blue-800 hover:text-white"
+              }
             `}
           >
             {item.label}
           </NavLink>
         ))}
+
+        {/* Tombol Keluar */}
+        <button
+          onClick={handleLogout}
+          className="text-left py-3 px-4 my-1 rounded-lg transition-all text-blue-100 hover:bg-blue-800 hover:text-white"
+        >
+          KELUAR
+        </button>
       </nav>
 
       {/* Footer */}

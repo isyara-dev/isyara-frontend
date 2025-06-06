@@ -9,6 +9,10 @@ const apiClient = {
   addAuthHeader(headers = {}) {
     const token = authService.getAccessToken();
     if (token) {
+      console.log(
+        "Adding auth header with token:",
+        token.substring(0, 15) + "..."
+      );
       return {
         ...headers,
         Authorization: `Bearer ${token}`,
@@ -38,6 +42,11 @@ const apiClient = {
                 body: originalRequest.body,
               });
             }
+          } else {
+            // Jika refresh gagal, logout dan redirect
+            authService.logout();
+            window.location.href = "/login";
+            throw new Error("Session expired. Please login again.");
           }
         } catch (refreshError) {
           // If refresh fails, logout
@@ -133,6 +142,7 @@ const apiClient = {
 
   // Convenience methods for different HTTP methods
   get(endpoint, options = {}) {
+    console.log(`ApiClient: GET request ke ${endpoint}`);
     return this.fetch(endpoint, { ...options, method: "GET" });
   },
 

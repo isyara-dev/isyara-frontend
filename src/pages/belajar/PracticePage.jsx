@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import apiClient from "../../services/api/apiClient";
 import HandGestureDetector from "../../components/gesture/HandGestureDetector";
-import { useAuth } from "../../contexts/AuthContext";
 
 // State machine constants
 const GAME_STATES = {
@@ -12,36 +11,25 @@ const GAME_STATES = {
   COMPLETED: "completed",
 };
 
-// Simple debounce function implementation
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    const context = this;
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(context, args), wait);
-  };
-}
-
-function SusunKataPage() {
+function PracticePage() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
-  const [word, setWord] = useState("");
-  const [letters, setLetters] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const { subModuleId } = useParams(); // Get the subModuleId from URL params
+
+  // State untuk menyimpan data submodul dan modul
+  const [currentSubModule, setCurrentSubModule] = useState(null);
+  const [allSubModules, setAllSubModules] = useState([]);
+  const [moduleId, setModuleId] = useState(null);
+
+  const [currentLetter, setCurrentLetter] = useState("");
   const [currentHint, setCurrentHint] = useState(null);
-  const [points, setPoints] = useState(0);
-  const [bestScore, setBestScore] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [completedWordIds, setCompletedWordIds] = useState([]);
-  const [currentWordData, setCurrentWordData] = useState(null);
   const [gameState, setGameState] = useState(GAME_STATES.IDLE);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [correctGesture, setCorrectGesture] = useState(false);
   const [incorrectGesture, setIncorrectGesture] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [progressUpdated, setProgressUpdated] = useState(false);
 
   // Refs for tracking state without triggering rerenders
-  const currentIndexRef = useRef(0);
-  const lettersRef = useRef([]);
   const gameStateRef = useRef(GAME_STATES.IDLE);
   const lastDetectedGestureRef = useRef(null);
   const completedRef = useRef(false);
@@ -59,86 +47,57 @@ function SusunKataPage() {
   const GESTURE_DETECTION_TIME = 2000; // 2 seconds
 
   // Add a state to track the letter being animated
-  const [animatingLetterIndex, setAnimatingLetterIndex] = useState(null);
+  const [animatingLetter, setAnimatingLetter] = useState(false);
   const animationTimeoutRef = useRef(null);
 
-  // Add a state to track if we're transitioning to a new word
-  const [isTransitioningWord, setIsTransitioningWord] = useState(false);
+  // Fetch submodule data and all submodules in the same module
+  useEffect(() => {
+    const fetchSubModuleData = async () => {
+      try {
+        setIsLoading(true);
 
-  // Fetch user profile to get best score
-  const fetchUserProfile = useCallback(async () => {
-    try {
-      const userData = await apiClient.getUserProfile();
-      if (userData && userData.score) {
-        console.log("Fetched user best score:", userData.score);
-        setBestScore(userData.score);
+        // Fetch all submodules
+        const allSubModulesData = await apiClient.get("/progress/sub");
+
+        // Find the current submodule
+        const currentSub = allSubModulesData.find(
+          (sub) => sub.id === parseInt(subModuleId)
+        );
+
+        if (!currentSub) {
+          throw new Error("Submodul tidak ditemukan");
+        }
+
+        setCurrentSubModule(currentSub);
+        setCurrentLetter(currentSub.name);
+        setModuleId(currentSub.module_id);
+
+        // Store moduleId in localStorage for navigation back
+        localStorage.setItem("activeModuleId", currentSub.module_id.toString());
+
+        // Filter all submodules in the same module
+        const sameModuleSubModules = allSubModulesData.filter(
+          (sub) => sub.module_id === currentSub.module_id
+        );
+
+        // Sort by order_index
+        sameModuleSubModules.sort((a, b) => a.order_index - b.order_index);
+        setAllSubModules(sameModuleSubModules);
+
+        // Fetch hint for the current letter
+        await fetchHint(currentSub.name);
+
+        setIsLoading(false);
+        setGameState(GAME_STATES.DETECTING);
+        gameStateRef.current = GAME_STATES.DETECTING;
+      } catch (error) {
+        console.error("Error fetching submodule data:", error);
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-    }
-  }, []);
+    };
 
-  // Initial load - fetch user profile and best score
-  useEffect(() => {
-    fetchUserProfile();
-  }, [fetchUserProfile]);
-
-  // Update best score when currentUser changes
-  useEffect(() => {
-    if (currentUser && currentUser.score) {
-      setBestScore(currentUser.score);
-    }
-  }, [currentUser]);
-
-  // Fetch random word - memoized to prevent recreating on every render
-  const fetchRandomWord = useCallback(async () => {
-    try {
-      console.log("Fetching new random word...");
-      setIsLoading(true);
-      setGameState(GAME_STATES.IDLE);
-      gameStateRef.current = GAME_STATES.IDLE;
-      completedRef.current = false;
-
-      const response = await apiClient.get("/words/random");
-      const wordData = response;
-
-      setCurrentWordData(wordData);
-      const wordStr = wordData.word.toUpperCase();
-      console.log("Fetched new word:", wordStr);
-
-      setWord(wordStr);
-      setLetters(wordStr.split(""));
-      lettersRef.current = wordStr.split("");
-
-      setCurrentIndex(0);
-      currentIndexRef.current = 0;
-
-      setIsLoading(false);
-      setGameState(GAME_STATES.DETECTING);
-      gameStateRef.current = GAME_STATES.DETECTING;
-
-      // Reset last detected gesture
-      lastDetectedGestureRef.current = null;
-
-      // Reset animation state
-      setAnimatingLetterIndex(null);
-      setIsTransitioningWord(false);
-
-      // Fetch initial hint
-      fetchHint(wordStr.split("")[0]);
-    } catch (error) {
-      console.error("Error fetching random word:", error);
-      setIsLoading(false);
-      setGameState(GAME_STATES.IDLE);
-      gameStateRef.current = GAME_STATES.IDLE;
-      setIsTransitioningWord(false);
-    }
-  }, []);
-
-  // Initial load
-  useEffect(() => {
-    fetchRandomWord();
-  }, [fetchRandomWord]);
+    fetchSubModuleData();
+  }, [subModuleId]);
 
   // Fetch hint for a specific letter
   const fetchHint = useCallback(async (letter) => {
@@ -153,6 +112,32 @@ function SusunKataPage() {
     }
   }, []);
 
+  // Update progress to API
+  const updateProgress = useCallback(async () => {
+    if (!currentSubModule || currentSubModule.is_completed || progressUpdated)
+      return;
+
+    try {
+      console.log("Updating progress for submodule:", currentSubModule.id);
+      const response = await apiClient.post("/progress", {
+        sub_module_id: currentSubModule.id,
+        is_completed: true,
+      });
+
+      console.log("Progress updated:", response);
+
+      // Update local state to reflect completion
+      setCurrentSubModule((prev) => ({
+        ...prev,
+        is_completed: true,
+      }));
+
+      setProgressUpdated(true);
+    } catch (error) {
+      console.error("Error updating progress:", error);
+    }
+  }, [currentSubModule, progressUpdated]);
+
   // Play sound effect for correct gesture
   const playCorrectSound = useCallback(() => {
     try {
@@ -163,108 +148,43 @@ function SusunKataPage() {
     }
   }, []);
 
-  // Handle word completion
-  const handleWordCompletion = useCallback(() => {
-    console.log("Handling word completion...");
-    if (currentWordData && !completedRef.current) {
+  // Handle letter completion
+  const handleLetterCompletion = useCallback(() => {
+    console.log("Handling letter completion...");
+    if (!completedRef.current) {
       completedRef.current = true;
-      setIsTransitioningWord(true);
 
-      // Add points
-      const newPoints = points + currentWordData.points;
-      console.log(
-        `Adding ${currentWordData.points} points. New total: ${newPoints}`
-      );
-      setPoints(newPoints);
-
-      // Update best score if current score is higher
-      if (newPoints > bestScore) {
-        setBestScore(newPoints);
+      // Update progress to API if not completed yet
+      if (
+        currentSubModule &&
+        !currentSubModule.is_completed &&
+        !progressUpdated
+      ) {
+        updateProgress();
       }
-
-      // Add word ID to completed words
-      setCompletedWordIds((prev) => {
-        const newIds = [...prev, currentWordData.id];
-        console.log("Updated completed word IDs:", newIds);
-        return newIds;
-      });
 
       // Show success message
       setShowSuccessMessage(true);
 
-      // Fetch next word after a delay
+      // Hide success message after a shorter delay
       setTimeout(() => {
         setShowSuccessMessage(false);
 
-        // Reset only what's needed for the next word
-        setDetectedGesture(null);
-        setGestureConfidence(0);
-        setGestureDetectionProgress(0);
-        setIsCorrectGesture(false);
-        setIsIncorrectGesture(false);
+        // Reset feedback states to allow continued practice
         setCorrectGesture(false);
-        setIncorrectGesture(false);
-
-        // Fetch new word without resetting camera
-        fetchRandomWord();
-      }, 2000);
-    }
-  }, [currentWordData, fetchRandomWord, points, bestScore]);
-
-  // Move to next letter with improved animation
-  const moveToNextLetter = useCallback(() => {
-    const nextIndex = currentIndexRef.current + 1;
-
-    // Set the current letter as animating
-    setAnimatingLetterIndex(currentIndexRef.current);
-
-    // Clear any existing animation timeout
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
-    }
-
-    // Schedule animation completion
-    animationTimeoutRef.current = setTimeout(() => {
-      // Animation completed
-      if (isTransitioningWord) {
-        // Skip further processing if we're already transitioning words
-        return;
-      }
-
-      setAnimatingLetterIndex(null);
-
-      if (nextIndex < lettersRef.current.length) {
-        // Move to next letter
-        console.log(`Moving to next letter: ${lettersRef.current[nextIndex]}`);
-        setCurrentIndex(nextIndex);
-        currentIndexRef.current = nextIndex;
-
-        // Fetch hint for next letter
-        fetchHint(lettersRef.current[nextIndex]);
-
-        // Return to detecting state
         setGameState(GAME_STATES.DETECTING);
         gameStateRef.current = GAME_STATES.DETECTING;
+        completedRef.current = false;
 
-        // Reset gesture states for next letter
+        // Reset gesture detection states
         setDetectedGesture(null);
         setGestureConfidence(0);
         setGestureDetectionProgress(0);
         setIsCorrectGesture(false);
         setIsIncorrectGesture(false);
-        setCorrectGesture(false);
-        setIncorrectGesture(false);
-      } else {
-        // Word completed
-        console.log("Word completed! All letters done.");
-        setGameState(GAME_STATES.COMPLETED);
-        gameStateRef.current = GAME_STATES.COMPLETED;
-
-        // Handle word completion
-        handleWordCompletion();
-      }
-    }, 800); // Animation duration - longer to ensure visibility
-  }, [fetchHint, handleWordCompletion, isTransitioningWord]);
+      }, 1000);
+    }
+  }, [currentSubModule, updateProgress, progressUpdated]);
 
   // Show correct gesture feedback
   const showCorrectGestureFeedback = useCallback(() => {
@@ -287,12 +207,11 @@ function SusunKataPage() {
   // Handle gesture detection
   const handleGestureDetected = useCallback(
     (gesture, confidenceValue) => {
-      // Don't process gestures if we're in completed state, animating, or transitioning words
+      // Don't process gestures if we're in completed state or animating
       if (
         gameStateRef.current === GAME_STATES.COMPLETED ||
         completedRef.current ||
-        animatingLetterIndex !== null ||
-        isTransitioningWord
+        animatingLetter
       ) {
         return;
       }
@@ -329,8 +248,6 @@ function SusunKataPage() {
 
       // Only process if we're in detecting state
       if (gameStateRef.current === GAME_STATES.DETECTING) {
-        const currentLetter = lettersRef.current[currentIndexRef.current];
-
         // Check if the gesture matches the current letter
         if (gesture === currentLetter) {
           // Set correct gesture state
@@ -370,8 +287,10 @@ function SusunKataPage() {
                 // Show correct gesture feedback animation
                 showCorrectGestureFeedback();
 
-                // Move to next letter with animation
-                moveToNextLetter();
+                // Mark as completed
+                setGameState(GAME_STATES.COMPLETED);
+                gameStateRef.current = GAME_STATES.COMPLETED;
+                handleLetterCompletion();
               }
             }, 100);
           }
@@ -404,10 +323,11 @@ function SusunKataPage() {
       }
     },
     [
-      moveToNextLetter,
+      currentLetter,
+      handleLetterCompletion,
       showCorrectGestureFeedback,
       showIncorrectGestureFeedback,
-      isTransitioningWord,
+      animatingLetter,
     ]
   );
 
@@ -423,66 +343,81 @@ function SusunKataPage() {
     };
   }, []);
 
-  // Submit completed words to backend and update user profile
-  const submitCompletedWords = useCallback(async () => {
-    if (completedWordIds.length === 0) {
-      // Don't submit if no words were completed
-      return;
+  // Handle back button click
+  const handleBackClick = useCallback(() => {
+    if (moduleId) {
+      // Pastikan moduleId sudah ada sebelum navigasi
+      // Simpan moduleId di localStorage agar BelajarPage bisa menampilkan submodul yang tepat
+      localStorage.setItem("activeModuleId", moduleId.toString());
+      navigate(`/belajar`);
+    } else {
+      // Fallback jika moduleId belum ada
+      navigate("/belajar");
+      console.warn(
+        "moduleId tidak ditemukan, kembali ke halaman belajar utama."
+      );
     }
+  }, [navigate, moduleId]);
 
-    try {
-      // Submit session to backend
-      await apiClient.post("/words/submit-session", {
-        word_ids: completedWordIds,
-      });
-      console.log("Session submitted successfully");
+  // Handle next button click
+  const handleNextClick = useCallback(() => {
+    if (!currentSubModule || !allSubModules.length) return;
 
-      // Fetch updated user profile to get latest best score
-      await fetchUserProfile();
-    } catch (error) {
-      console.error("Error submitting session:", error);
+    // Find current index in allSubModules
+    const currentIndex = allSubModules.findIndex(
+      (sub) => sub.id === currentSubModule.id
+    );
+
+    // Check if we have a next submodule in our list
+    if (currentIndex < allSubModules.length - 1) {
+      const nextSubModule = allSubModules[currentIndex + 1];
+
+      // Navigate to the next submodule
+      navigate(`/praktek/${nextSubModule.id}`);
+
+      // Reset progress updated flag for the next submodule
+      setProgressUpdated(false);
+    } else {
+      // If we've reached the end of the submodules, go back to the module page
+      // Pastikan moduleId disimpan untuk navigasi kembali
+      if (moduleId) {
+        localStorage.setItem("activeModuleId", moduleId.toString());
+      }
+      navigate(`/belajar`);
     }
-  }, [completedWordIds, fetchUserProfile]);
-
-  // Handle finish button click
-  const handleFinishClick = useCallback(() => {
-    // Only submit if user has earned points
-    if (points > 0) {
-      // Submit completed words before navigating away
-      submitCompletedWords();
-    }
-    navigate("/modul");
-  }, [navigate, submitCompletedWords, points]);
+  }, [navigate, currentSubModule, allSubModules, moduleId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-800 to-blue-700 text-white flex flex-col max-h-screen overflow-hidden">
-      {/* Header */}
-      <header className="flex justify-center items-center p-4 bg-indigo-900">
-        {/* Current and Best Score display (center) */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-blue-600/80 px-4 py-2 rounded font-bold">
-            <div className="text-xs opacity-80">Current</div>
-            <div className="text-lg font-bold">{points} pts</div>
-          </div>
+      {/* Header with back button on the left */}
+      <header className="flex justify-between items-center p-4 bg-indigo-900">
+        {/* Back button (left) */}
+        <button
+          onClick={handleBackClick}
+          className="flex items-center gap-2 bg-indigo-700 px-3 py-2 rounded hover:bg-indigo-600 transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          <span>Kembali</span>
+        </button>
 
-          <div className="flex items-center gap-2 bg-indigo-500 px-4 py-2 rounded font-bold">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-              />
-            </svg>
-            Best Score: {bestScore}
-          </div>
-        </div>
+        {/* Title (center) */}
+        <div className="text-xl font-bold">Praktek Huruf {currentLetter}</div>
+
+        {/* Empty div to balance the layout */}
+        <div className="w-24"></div>
       </header>
 
       {/* Main content - made responsive with flex-1 to take available space */}
@@ -495,14 +430,17 @@ function SusunKataPage() {
             ${correctGesture ? "border-4 border-green-500" : ""}`}
         >
           {isLoading ? (
-            <p>Loading camera...</p>
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-300 mb-4"></div>
+              <p>Memuat kamera...</p>
+            </div>
           ) : (
             <>
               <HandGestureDetector
                 key="persistent-gesture-detector"
                 onGestureDetected={handleGestureDetected}
                 showDebugInfo={false}
-                active={!showSuccessMessage && !isTransitioningWord}
+                active={!showSuccessMessage}
               />
 
               {/* Detection status display */}
@@ -521,7 +459,7 @@ function SusunKataPage() {
                 {detectedGesture ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span>{`Detected: ${detectedGesture}`}</span>
+                      <span>{`Terdeteksi: ${detectedGesture}`}</span>
                       <span className="ml-2">
                         {`${Math.round(gestureConfidence * 100)}%`}
                       </span>
@@ -538,7 +476,7 @@ function SusunKataPage() {
                     )}
                   </>
                 ) : (
-                  "No gesture detected"
+                  "Tidak ada gerakan terdeteksi"
                 )}
               </div>
 
@@ -546,9 +484,7 @@ function SusunKataPage() {
               {showSuccessMessage && (
                 <div className="absolute inset-0 bg-green-500/70 flex flex-col items-center justify-center z-20">
                   <div className="text-4xl font-bold mb-4">Berhasil!</div>
-                  <div className="text-2xl">
-                    +{currentWordData?.points || 0} Poin
-                  </div>
+                  <div className="text-2xl">Huruf {currentLetter} dikuasai</div>
                 </div>
               )}
             </>
@@ -558,11 +494,14 @@ function SusunKataPage() {
         {/* Hint image (right) */}
         <div className="flex flex-col justify-center items-center bg-blue-700 rounded-xl h-full">
           {isLoading ? (
-            <p>Loading hint...</p>
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-300 mb-4"></div>
+              <p>Memuat petunjuk...</p>
+            </div>
           ) : currentHint ? (
             <>
               <div className="text-sm mb-2 bg-blue-600 px-2 py-1 rounded">
-                Huruf: {letters[currentIndex]}
+                Huruf: {currentLetter}
               </div>
               <img
                 src={currentHint.image_url}
@@ -572,55 +511,65 @@ function SusunKataPage() {
               <p className="text-lg">{currentHint.description}</p>
             </>
           ) : (
-            <p>No hint available</p>
+            <p>Petunjuk tidak tersedia</p>
           )}
         </div>
       </main>
 
-      {/* Footer with word display and scores */}
+      {/* Footer with next button on the right */}
       <footer className="p-4">
-        {/* Word display with background card and scores */}
         <div className="bg-gradient-to-r from-purple-700 to-purple-800 rounded-xl p-4">
           <div className="flex items-center justify-between">
-            {/* Potential points (left) */}
-            <div className="bg-green-600/80 px-3 py-1 rounded-lg shadow-lg">
-              <div className="text-xs opacity-80">Potential</div>
-              <div className="text-lg font-bold">
-                +{currentWordData?.points || 0}
-              </div>
-            </div>
-
-            {/* Letters (center) */}
-            <div className="flex gap-2 text-4xl md:text-5xl font-bold tracking-widest px-2">
-              {letters.map((char, index) => (
-                <span
-                  key={index}
-                  className={`transition-all duration-500 transform
-                    ${
-                      index === currentIndex
-                        ? "text-white"
-                        : index < currentIndex
-                        ? "text-green-300"
-                        : "text-purple-300"
-                    }
-                    ${
-                      animatingLetterIndex === index
-                        ? "scale-150 text-green-400"
-                        : "scale-100"
-                    }
-                  `}
-                >
-                  {char}
-                </span>
-              ))}
-            </div>
-
-            {/* Finish button (right) */}
-            <button
-              onClick={handleFinishClick}
-              className="text-sm bg-indigo-700 px-3 py-1 rounded"
+            {/* Status (left) */}
+            <div
+              className={`px-3 py-1 rounded-lg text-sm font-medium 
+              ${
+                gameState === GAME_STATES.COMPLETED ||
+                currentSubModule?.is_completed
+                  ? "bg-green-600"
+                  : "bg-blue-600"
+              }`}
             >
-              Selesai
+              {gameState === GAME_STATES.COMPLETED ||
+              currentSubModule?.is_completed
+                ? "Selesai"
+                : "Belum Selesai"}
+            </div>
+
+            {/* Current letter (center) */}
+            <div className="text-4xl font-bold">{currentLetter}</div>
+
+            {/* Next button (right) */}
+            <button
+              onClick={handleNextClick}
+              className={`flex items-center gap-2 px-4 py-2 rounded text-white font-medium transition-colors
+                ${
+                  gameState === GAME_STATES.COMPLETED ||
+                  currentSubModule?.is_completed
+                    ? "bg-green-600 hover:bg-green-500"
+                    : "bg-indigo-700 hover:bg-indigo-600"
+                }`}
+              disabled={
+                gameState !== GAME_STATES.COMPLETED &&
+                !showSuccessMessage &&
+                !currentSubModule?.is_completed
+              }
+            >
+              <span>Lanjut</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M14 5l7 7m0 0l-7 7m7-7H3"
+                />
+              </svg>
             </button>
           </div>
         </div>
@@ -629,4 +578,4 @@ function SusunKataPage() {
   );
 }
 
-export default SusunKataPage;
+export default PracticePage;
