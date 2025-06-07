@@ -2,8 +2,9 @@ import React from "react";
 import Sidebar from "../components/layout/Sidebar";
 import Button from "../components/ui/Button";
 import SubmoduleList from "../components/learning/SubmoduleList";
+import { Puzzle } from "lucide-react"; // [1] IMPORT IKON BARU DARI LUCIDE-REACT
 
-// SubmoduleCard Component
+// SubmoduleCard Component (Tidak ada perubahan di sini)
 const SubmoduleCard = ({ letter, status, imageUrl, onClick }) => {
   const isCompleted = status === true;
 
@@ -166,8 +167,43 @@ const BelajarView = ({
         {!activeModuleId ? (
           // Tampilan Modul
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8 flex-grow">
+            {/* Tantangan Section - Ditampilkan di atas untuk mobile */}
+            <div className="lg:col-span-1 lg:order-2 order-1 rounded-l p-4 md:pt-6 md:px-0 md:pb-0 flex flex-col">
+              <h2 className="text-lg md:text-xl font-semibold mb-6 text-white">
+                Tantangan
+              </h2>
+
+              {/* Card isi Tantangan */}
+              <div className="rounded-lg p-4 shadow-md bg-secondary flex flex-col">
+                <div className="flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-base md:text-lg font-bold mb-2 md:mb-3 text-center text-white">
+                      RANGKAI KATA
+                    </h3>
+                    <div className="flex items-center justify-center mb-3">
+                      <div className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center">
+                        <Puzzle className="w-10 h-10 md:w-12 md:h-12 text-cyan-400" />
+                      </div>
+                    </div>
+                    <p className="text-green-300 text-center mb-6 md:mb-8 text-xs md:text-sm">
+                      Rangkai kata dan dapatkan point!
+                    </p>
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      variant="play"
+                      fullWidth
+                      onClick={handleChallengeClick}
+                    >
+                      Mulai Tantangan!
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Left Section - Module Groups */}
-            <div className="lg:col-span-3 rounded-xl p-4 md:p-6">
+            <div className="lg:col-span-3 lg:order-1 order-2 rounded-xl p-4 md:p-6">
               <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 text-white">
                 Modul Pembelajaran
               </h2>
@@ -210,7 +246,7 @@ const BelajarView = ({
                       <div className="flex justify-between items-center">
                         <div>
                           <span className="text-xs text-green-300 block">
-                            Completed
+                            Terselesaikan
                           </span>
                           <span className="text-base md:text-lg font-bold text-white">
                             {module.completed}/{module.total}
@@ -226,35 +262,6 @@ const BelajarView = ({
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* Right Section - Challenge Section */}
-            <div className="rounded-xl p-4 md:p-6 shadow-md bg-primary flex flex-col">
-              <div className="flex flex-col h-full justify-between">
-                <div>
-                  <h3 className="text-base md:text-lg font-bold mb-2 md:mb-3 text-center text-white">
-                    BELAJAR RANGKAI KATA
-                  </h3>
-                  <p className="text-green-300 text-center mb-6 md:mb-8 text-xs md:text-sm">
-                    Rangkai kata dan dapatkan point!
-                  </p>
-                  <div className="bg-green-900/20 h-1.5 md:h-2 rounded-full mb-3 md:mb-4">
-                    <div
-                      className="bg-green-500 h-1.5 md:h-2 rounded-full"
-                      style={{ width: "80%" }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="flex justify-center">
-                  <Button
-                    variant="play"
-                    fullWidth
-                    onClick={handleChallengeClick}
-                  >
-                    Mulai Tantangan!
-                  </Button>
-                </div>
-              </div>
             </div>
           </div>
         ) : (
