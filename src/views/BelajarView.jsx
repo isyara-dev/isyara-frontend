@@ -2,7 +2,7 @@ import React from "react";
 import Sidebar from "../components/layout/Sidebar";
 import Button from "../components/ui/Button";
 import SubmoduleList from "../components/learning/SubmoduleList";
-import { Puzzle } from "lucide-react"; // [1] IMPORT IKON BARU DARI LUCIDE-REACT
+import { Puzzle } from "lucide-react"; //
 
 // SubmoduleCard Component (Tidak ada perubahan di sini)
 const SubmoduleCard = ({ letter, status, imageUrl, onClick }) => {

@@ -120,4 +120,4 @@ const SubmoduleList = ({
 };
 
 export default SubmoduleList;
-export { SubmoduleCard }; // Export juga komponen card agar bisa digunakan di tempat lain jika diperlukan
+export { SubmoduleCard };

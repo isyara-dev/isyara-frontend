@@ -6,8 +6,9 @@ const UserRank = ({ userRank, isOutsideTopRanks = false }) => {
   // Jika userRank tidak valid, return null
   if (!userRank) return null;
 
-  // Pastikan best_score ada dan bukan 0 jika ini bukan data dummy
-  const score = userRank.best_score || userRank.score || 0;
+  // Pastikan pengambilan skor yang benar
+  // Prioritaskan score langsung dari userRank, kemudian best_score jika ada
+  const score = userRank.score || userRank.best_score || 0;
 
   // Gunakan avatar default jika terjadi error
   const avatarUrl = imgError
@@ -19,23 +20,24 @@ const UserRank = ({ userRank, isOutsideTopRanks = false }) => {
         userRank.username
       )}`;
 
+  // Tampilkan rank sebagai "-" jika user tidak masuk top 10
+  const displayRank = isOutsideTopRanks ? "-" : `${userRank.rank}.`;
+
   return (
-    <div className="bg-blue-700/50 rounded-xl border border-blue-500/50 overflow-hidden backdrop-blur-sm shadow-lg mb-6">
-      <div className="p-4 bg-blue-600/30 border-b border-blue-500/50 flex justify-between items-center">
+    <div className="bg-secondary/80 rounded-xl border border-third/50 overflow-hidden backdrop-blur-sm shadow-lg mb-6">
+      <div className="p-4 bg-secondary/50 border-b border-third/50 flex justify-between items-center">
         <h2 className="font-bold text-lg">Peringkat Anda</h2>
         {isOutsideTopRanks && (
-          <span className="text-xs bg-blue-800/70 text-blue-300 px-2 py-1 rounded">
+          <span className="text-xs text-third px-2 py-1">
             Di luar peringkat teratas
           </span>
         )}
       </div>
-      <div className="flex items-center p-4 hover:bg-blue-600/20 transition-colors">
-        <span className="text-sm text-blue-300 w-6 text-center mr-2">
-          {isOutsideTopRanks
-            ? (userRank.rank ? userRank.rank : ">10") + "."
-            : userRank.rank + "."}
+      <div className="flex items-center p-4 hover:bg-secondary/20 transition-colors">
+        <span className="text-sm text-white w-6 text-center mr-2">
+          {displayRank}
         </span>
-        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-yellow-400/50 mr-4">
+        <div className="w-10 h-10 rounded-full overflow-hidden mr-4">
           <img
             src={avatarUrl}
             alt={userRank.name || userRank.username}
@@ -46,14 +48,11 @@ const UserRank = ({ userRank, isOutsideTopRanks = false }) => {
 
         <div className="flex-1">
           <h3 className="font-bold">{userRank.name || userRank.username}</h3>
-          <p className="text-blue-300 text-sm">@{userRank.username}</p>
+          <p className="text-white/70 text-sm">@{userRank.username}</p>
         </div>
 
-        <div className="flex flex-col items-end">
-          <span className="text-xl font-bold text-yellow-400">{score}</span>
-          <span className="text-xs text-blue-300">
-            {isOutsideTopRanks ? "Terus berlatih!" : "Bagus!"}
-          </span>
+        <div className="flex flex-col items-center justify-center w-24">
+          <span className="text-xl font-bold text-white">{score}</span>
         </div>
       </div>
     </div>
