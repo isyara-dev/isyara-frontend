@@ -3,6 +3,7 @@ import GestureDetectionService from "../services/gesture/GestureDetectionService
 
 class SusunKataPresenter {
   constructor(susunKataModel, progressModel, updateView) {
+    console.log("SusunKataPresenter dibuat");
     this.susunKataModel = susunKataModel;
     this.progressModel = progressModel;
     this.updateView = updateView;
@@ -17,6 +18,7 @@ class SusunKataPresenter {
 
   async fetchUserProfile() {
     try {
+      console.log("Memulai fetchUserProfile");
       const userData = await apiClient.getUserProfile();
       if (userData && userData.score) {
         console.log("Fetched user best score:", userData.score);
@@ -30,39 +32,78 @@ class SusunKataPresenter {
 
   async fetchRandomWord() {
     try {
-      console.log("Fetching new random word...");
-      this.susunKataModel.setLoading(true);
-      this.progressModel.setGameState(this.progressModel.GAME_STATES.IDLE);
-      this.completedRef = false;
+      console.log("Mengambil kata acak baru...");
+
+      // Set transisi state
+      this.susunKataModel.setIsTransitioningWord(true);
+
+      // Simpan state sebelumnya
+      const previousGameState = this.progressModel.gameState;
+      this.progressModel.setGameState(
+        this.progressModel.GAME_STATES.TRANSITIONING
+      );
+
+      // PENTING: Update UI sebelum fetch
       this.updateView();
 
+      // Ambil kata acak
+      console.log("Memanggil API untuk kata acak");
       const response = await apiClient.get("/words/random");
       const wordData = response;
 
-      this.susunKataModel.setWordData(wordData);
-      console.log("Fetched new word:", wordData.word);
+      console.log("Data kata diterima:", wordData);
 
-      this.susunKataModel.setLoading(false);
-      this.progressModel.setGameState(this.progressModel.GAME_STATES.DETECTING);
+      // Set data kata
+      this.susunKataModel.setWordData(wordData);
+      console.log("Kata baru diambil:", wordData.word);
+      console.log("Letters:", this.susunKataModel.letters);
+      console.log("Current index:", this.susunKataModel.currentIndex);
+
+      // PENTING: Update UI setelah set data kata
       this.updateView();
 
-      // Fetch initial hint
-      await this.fetchHint(this.susunKataModel.letters[0]);
-    } catch (error) {
-      console.error("Error fetching random word:", error);
-      this.susunKataModel.setLoading(false);
-      this.progressModel.setGameState(this.progressModel.GAME_STATES.IDLE);
+      // Ambil petunjuk untuk huruf pertama
+      const currentLetter = this.susunKataModel.letters[0];
+      console.log("Mengambil petunjuk untuk huruf:", currentLetter);
+
+      try {
+        await this.fetchHint(currentLetter);
+      } catch (hintError) {
+        console.error("Error saat fetch hint:", hintError);
+      }
+
+      // Reset state transisi
+      console.log("Mengatur ulang state transisi");
       this.susunKataModel.setIsTransitioningWord(false);
+      this.susunKataModel.setLoading(false);
+
+      // Kembalikan game state ke detecting
+      this.progressModel.setGameState(this.progressModel.GAME_STATES.DETECTING);
+      this.completedRef = false;
+
+      // Update UI
+      this.updateView();
+    } catch (error) {
+      console.error("Error mengambil kata acak:", error);
+      // Pastikan state tetap konsisten meskipun terjadi error
+      this.susunKataModel.setIsTransitioningWord(false);
+      this.susunKataModel.setLoading(false);
+      this.progressModel.setGameState(this.progressModel.GAME_STATES.DETECTING);
       this.updateView();
     }
   }
 
   async fetchHint(letter) {
-    if (!letter) return;
+    if (!letter) {
+      console.error("Attempted to fetch hint with null letter");
+      return;
+    }
 
     try {
       console.log(`Fetching hint for letter: ${letter}`);
       const res = await this.gestureService.fetchHint(letter);
+      console.log(`Hint result for ${letter}:`, res);
+
       this.susunKataModel.setHint(res);
       this.updateView();
     } catch (error) {
@@ -71,40 +112,31 @@ class SusunKataPresenter {
   }
 
   handleWordCompletion() {
-    console.log("Handling word completion...");
+    console.log("Menyelesaikan kata...");
     const { currentWordData } = this.susunKataModel;
 
     if (currentWordData && !this.completedRef) {
       this.completedRef = true;
-      this.susunKataModel.setIsTransitioningWord(true);
-      this.updateView();
 
-      // Add points
+      // Tambah poin
       this.susunKataModel.addPoints(currentWordData.points);
-      console.log(
-        `Adding ${currentWordData.points} points. New total: ${this.susunKataModel.points}`
-      );
 
-      // Add word ID to completed words
+      // Tambahkan ID kata ke kata yang telah diselesaikan
       this.susunKataModel.addCompletedWordId(currentWordData.id);
-      console.log(
-        "Updated completed word IDs:",
-        this.susunKataModel.completedWordIds
-      );
 
-      // Show success message
+      // PERBAIKAN: Reset deteksi gesture sebelum menampilkan pesan sukses
+      this.progressModel.resetGestureDetection();
+
+      // Tampilkan pesan sukses
       this.progressModel.setShowSuccessMessage(true);
       this.updateView();
 
-      // Fetch next word after a delay
+      // Ambil kata baru setelah jeda
       setTimeout(() => {
         this.progressModel.setShowSuccessMessage(false);
-
-        // Reset only what's needed for the next word
-        this.progressModel.resetGestureDetection();
         this.updateView();
 
-        // Fetch new word without resetting camera
+        // Ambil kata baru tanpa me-refresh kamera
         this.fetchRandomWord();
       }, 2000);
     }

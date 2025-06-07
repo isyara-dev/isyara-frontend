@@ -11,6 +11,7 @@ class SusunKataModel {
     this.currentWordData = null;
     this.isTransitioningWord = false;
     this.animatingLetterIndex = null;
+    this.isNavigating = false;
   }
 
   setWordData(wordData) {
@@ -66,6 +67,10 @@ class SusunKataModel {
 
   isWordCompleted() {
     return this.currentIndex >= this.letters.length;
+  }
+
+  setNavigating(isNavigating) {
+    this.isNavigating = isNavigating;
   }
 }
 

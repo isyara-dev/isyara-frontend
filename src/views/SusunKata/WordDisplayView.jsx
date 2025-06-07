@@ -1,6 +1,11 @@
 import React from "react";
 
-function WordDisplayView({ letters, currentIndex, animatingLetterIndex }) {
+function WordDisplayView({
+  letters,
+  currentIndex,
+  animatingLetterIndex,
+  isTransitioning = false,
+}) {
   return (
     <div className="flex gap-2 text-4xl md:text-5xl font-bold tracking-widest px-2">
       {letters.map((char, index) => (
@@ -19,6 +24,7 @@ function WordDisplayView({ letters, currentIndex, animatingLetterIndex }) {
                 ? "scale-150 text-green-400"
                 : "scale-100"
             }
+            ${isTransitioning ? "opacity-30" : ""}
           `}
         >
           {char}
