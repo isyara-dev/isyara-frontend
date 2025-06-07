@@ -95,10 +95,10 @@ const Login = () => {
 
   return (
     <AuthLayout heading="Login" subheading="Glad you're back!">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-3">
         {(errors.general || authError) && (
-          <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-2 rounded mb-4">
-            {errors.general || authError}
+          <div className=" bg-opacity-10 border border-red-500 text-red-500 px-4 py-2 rounded mb-2 text-sm">
+            {errors.general || authError || "Login gagal. Silakan coba lagi."}
           </div>
         )}
 

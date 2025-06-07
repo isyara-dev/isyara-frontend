@@ -19,8 +19,15 @@ const AuthLayout = ({ children, heading, subheading }) => {
       </div>
 
       {/* Mobile View - Logo at top center, form below */}
-      <div className="flex flex-col items-center pt-8 pb-4 md:hidden">
-        <Logo size="medium" />
+      <div className="flex flex-col items-center pt-8 pb-2 md:hidden">
+        <Logo size="large" />
+        <div className="text-xs uppercase tracking-widest text-text-light opacity-80 text-center mt-2">
+          HAND GESTURES IS UNIVERSAL LANGUAGE
+        </div>
+        <div className="text-xl font-bold mt-1 text-text-light leading-tight text-center">
+          Good <span className="text-secondary">gestures</span> build trust &
+          tell your story.
+        </div>
       </div>
 
       {/* Left side - Branding and Message - Hidden on mobile */}
@@ -48,17 +55,17 @@ const AuthLayout = ({ children, heading, subheading }) => {
       </div>
 
       {/* Right side - Auth Form */}
-      <div className="w-full md:w-[480px] md:pr-16 flex flex-col justify-center md:justify-center min-h-[60vh] md:min-h-screen pb-12">
-        <div className="max-w-md w-full mx-auto my-auto md:mt-[108px]">
-          <div className="bg-[#1f1d4d] p-6 rounded-lg shadow-lg">
+      <div className="w-full md:w-[480px] md:pr-16 flex flex-col justify-center md:justify-center min-h-[60vh] md:min-h-screen pb-8">
+        <div className="max-w-md w-full mx-auto my-auto md:mt-[108px] px-4 sm:px-6">
+          <div className="bg-[#1f1d4d] p-4 sm:p-5 rounded-lg shadow-lg">
             {heading && (
-              <h2 className="text-2xl md:text-3xl font-bold text-text-light mb-1 md:mb-2">
+              <h2 className="text-xl md:text-2xl font-bold text-text-light mb-1">
                 {heading}
               </h2>
             )}
 
             {subheading && (
-              <p className="text-text-light opacity-80 mb-4 md:mb-6 text-sm md:text-base">
+              <p className="text-text-light opacity-80 mb-3 text-sm">
                 {subheading}
               </p>
             )}
@@ -68,16 +75,7 @@ const AuthLayout = ({ children, heading, subheading }) => {
         </div>
       </div>
 
-      {/* Mobile View - Branding after form */}
-      <div className="flex flex-col px-6 pt-4 pb-8 md:hidden">
-        <div className="text-xs uppercase tracking-widest text-text-light opacity-80 text-center">
-          HAND GESTURES IS UNIVERSAL LANGUAGE
-        </div>
-        <div className="text-xl font-bold mt-2 text-text-light leading-tight text-center">
-          Good <span className="text-secondary">gestures</span> build trust &
-          tell your story.
-        </div>
-      </div>
+      {/* Mobile View - Removed branding after form since we moved it above */}
     </div>
   );
 };

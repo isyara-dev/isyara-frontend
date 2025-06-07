@@ -122,10 +122,12 @@ const login = async (email, password) => {
     });
 
     const data = await response.json();
-    console.log("Login response:", data); // Debug the response
 
     if (!response.ok) {
-      throw new Error(data.message || "Login failed");
+      // Pastikan selalu ada pesan error yang jelas
+      throw new Error(
+        data.message || data.error || "Login gagal. Silakan coba lagi."
+      );
     }
 
     // Store user data and tokens - handle the structure with session object

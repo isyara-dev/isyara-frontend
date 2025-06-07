@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/layout/Sidebar";
-import { FaCamera, FaInfoCircle, FaLock, FaEnvelope } from "react-icons/fa";
+import {
+  FaCamera,
+  FaInfoCircle,
+  FaLock,
+  FaEnvelope,
+  FaSignOutAlt,
+} from "react-icons/fa";
 import apiClient from "../../services/api/apiClient";
 import { useAuth } from "../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState({
     name: "",
     username: "",
@@ -13,7 +21,6 @@ export default function ProfilePage() {
     password: "",
     avatar_url: "/profile-avatar.png",
     login_method: "email",
-    score: 0,
   });
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -24,6 +31,7 @@ export default function ProfilePage() {
     message: "",
     type: "",
   });
+  const [imgError, setImgError] = useState(false);
 
   // Fetch user profile data
   useEffect(() => {
@@ -40,7 +48,6 @@ export default function ProfilePage() {
           password: "",
           avatar_url: userData.avatar_url || "/profile-avatar.png",
           login_method: userData.login_method || "email",
-          score: userData.score || 0,
         });
 
         // Set preview URL for avatar
@@ -87,6 +94,16 @@ export default function ProfilePage() {
     }
   };
 
+  // Generate placeholder avatar if image fails to load
+  const getAvatarUrl = () => {
+    if (imgError || !profile.avatar_url) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        profile.name || "User"
+      )}&background=4ade80&color=fff&size=200`;
+    }
+    return previewUrl || profile.avatar_url;
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,10 +130,6 @@ export default function ProfilePage() {
 
       // Handle avatar upload if selected
       if (selectedImage) {
-        // In a real implementation, you would upload the image to a server
-        // and get back a URL. For now, we'll just simulate this.
-        // updateData.avatar_url = "https://example.com/avatar.png";
-
         // TODO: Implement actual image upload
         console.log("Would upload image:", selectedImage.name);
       }
@@ -168,11 +181,17 @@ export default function ProfilePage() {
     setNotification({ show: false, message: "", type: "" });
   };
 
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
-    <div className="flex min-h-screen bg-gradient-to-b from-blue-900 to-purple-900 text-white">
+    <div className="min-h-screen w-full bg-gradient-to-br from-background via-primary to-background flex flex-col md:flex-row">
       <Sidebar />
 
-      <main className="flex-1 p-6 lg:p-10">
+      <main className="flex-1 p-4 md:p-6 lg:p-8 flex flex-col pb-16 md:pb-8">
         {notification.show && (
           <div
             className={`p-4 mb-6 rounded-lg flex justify-between items-center ${
@@ -190,35 +209,37 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="text-sm text-blue-200 mb-6">
+        <div className="flex items-center text-xs md:text-sm text-green-200 mb-4 md:mb-6">
           <span>Beranda</span>
           <span className="mx-2">/</span>
-          <span className="text-blue-100 font-medium">Profile</span>
+          <span className="font-medium text-green-100">Pengaturan Profil</span>
         </div>
 
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold mb-1">Profile</h1>
-          <p className="text-lg text-blue-200">Perbarui informasi akun anda</p>
+        <header className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2 text-white">
+            Pengaturan Profil
+          </h1>
+          <p className="text-base md:text-lg text-green-200">
+            Perbarui informasi akun Anda
+          </p>
         </header>
 
         {loading ? (
-          <div className="text-center py-10">
-            <p>Memuat data profil...</p>
+          <div className="flex justify-center items-center h-40">
+            <div className="animate-spin rounded-full h-10 w-10 md:h-12 md:w-12 border-t-2 border-b-2 border-green-300"></div>
           </div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-10 items-start">
-            {/* form */}
-            <div className="lg:w-2/3 bg-blue-800/40 rounded-2xl p-8 shadow-xl border border-blue-700">
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="bg-secondary rounded-lg mb-8 p-6 md:p-8 shadow-md">
               <div className="flex flex-col items-center mb-8">
                 <div className="relative">
                   <img
-                    src={
-                      previewUrl || profile.avatar_url || "/profile-avatar.png"
-                    }
+                    src={getAvatarUrl()}
                     alt={profile.name || "User"}
-                    className="rounded-full w-28 h-28 object-cover border-4 border-white"
+                    className="rounded-full w-28 h-28 object-cover border-4 border-white shadow-lg"
+                    onError={() => setImgError(true)}
                   />
-                  <label className="absolute -bottom-1 -right-1 bg-blue-500 hover:bg-blue-600 rounded-full p-2 text-white cursor-pointer">
+                  <label className="absolute -bottom-1 -right-1 bg-accent hover:bg-accent/80 rounded-full p-2 text-white cursor-pointer shadow-md transition-all duration-300">
                     <FaCamera size={16} />
                     <input
                       type="file"
@@ -232,15 +253,15 @@ export default function ProfilePage() {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Informasi Dasar */}
-                <div className="border-b border-blue-700 pb-6">
-                  <h3 className="text-lg font-semibold mb-4">
+                <div className="border-b border-green-700/30 pb-6">
+                  <h3 className="text-lg font-semibold mb-4 text-white">
                     Informasi Dasar
                   </h3>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="flex items-center text-sm font-medium mb-2">
-                        Nama <FaInfoCircle className="ml-1 text-blue-300" />
+                      <label className="flex items-center text-sm font-medium mb-2 text-green-100">
+                        Nama <FaInfoCircle className="ml-1 text-green-300" />
                       </label>
                       <input
                         type="text"
@@ -248,12 +269,12 @@ export default function ProfilePage() {
                         placeholder="Nama Anda"
                         value={profile.name}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 rounded-lg bg-blue-700 text-white border border-blue-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        className="w-full px-4 py-2 rounded-lg bg-primary/40 text-white border border-green-700/30 focus:outline-none focus:ring-2 focus:ring-green-400"
                       />
                     </div>
 
                     <div>
-                      <label className="flex items-center text-sm font-medium mb-2">
+                      <label className="flex items-center text-sm font-medium mb-2 text-green-100">
                         Username
                       </label>
                       <input
@@ -262,7 +283,7 @@ export default function ProfilePage() {
                         placeholder="username"
                         value={profile.username}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 rounded-lg bg-blue-700 text-white border border-blue-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        className="w-full px-4 py-2 rounded-lg bg-primary/40 text-white border border-green-700/30 focus:outline-none focus:ring-2 focus:ring-green-400"
                       />
                     </div>
                   </div>
@@ -270,11 +291,13 @@ export default function ProfilePage() {
 
                 {/* Informasi Akun */}
                 <div className="pt-2">
-                  <h3 className="text-lg font-semibold mb-4">Informasi Akun</h3>
+                  <h3 className="text-lg font-semibold mb-4 text-white">
+                    Informasi Akun
+                  </h3>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="flex items-center text-sm font-medium mb-2">
+                      <label className="flex items-center text-sm font-medium mb-2 text-green-100">
                         <FaEnvelope className="mr-2" /> Email
                       </label>
                       <input
@@ -283,16 +306,16 @@ export default function ProfilePage() {
                         placeholder="email@example.com"
                         value={profile.email}
                         disabled={true}
-                        className="w-full px-4 py-2 rounded-lg bg-blue-700/50 text-white/70 border border-blue-600 cursor-not-allowed"
+                        className="w-full px-4 py-2 rounded-lg bg-primary/20 text-white/70 border border-green-700/30 cursor-not-allowed"
                       />
-                      <p className="text-xs text-blue-300 mt-1">
+                      <p className="text-xs text-green-300 mt-1">
                         Email tidak dapat diubah saat ini
                       </p>
                     </div>
 
                     {profile.login_method !== "google" && (
                       <div>
-                        <label className="flex items-center text-sm font-medium mb-2">
+                        <label className="flex items-center text-sm font-medium mb-2 text-green-100">
                           <FaLock className="mr-2" /> Password Baru
                         </label>
                         <input
@@ -301,7 +324,7 @@ export default function ProfilePage() {
                           placeholder="Masukkan password baru"
                           value={profile.password}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 rounded-lg bg-blue-700 text-white border border-blue-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                          className="w-full px-4 py-2 rounded-lg bg-primary/40 text-white border border-green-700/30 focus:outline-none focus:ring-2 focus:ring-green-400"
                         />
                         <p className="text-xs text-yellow-300 mt-1">
                           Perubahan password akan mengakhiri sesi Anda dan
@@ -312,45 +335,25 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex justify-center gap-4 pt-6">
-                  <button
-                    type="button"
-                    className="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-full font-semibold"
-                  >
-                    Hapus Akun
-                  </button>
+                <div className="flex justify-between md:justify-end gap-4 pt-6">
+                  <div className="md:hidden">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center justify-center bg-gradient-to-r from-red-700 to-red-500 hover:from-red-700/80 hover:to-red-500/80 text-white px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg text-sm"
+                    >
+                      <FaSignOutAlt className="text-red-400" />
+                      <span>Keluar</span>
+                    </button>
+                  </div>
                   <button
                     type="submit"
-                    className="bg-blue-500 hover:bg-blue-400 text-white px-5 py-2 rounded-full font-semibold"
+                    className="bg-gradient-to-r from-green-500 to-cyan-500 hover:from-green-600 hover:to-cyan-600 text-white px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg text-sm"
                     disabled={updating}
                   >
                     {updating ? "Menyimpan..." : "Simpan Perubahan"}
                   </button>
                 </div>
               </form>
-            </div>
-
-            {/* profile card */}
-            <div className="lg:w-1/3 bg-blue-800/50 rounded-2xl p-6 text-center shadow-xl border border-blue-700">
-              <img
-                src={previewUrl || profile.avatar_url || "/profile-avatar.png"}
-                alt={profile.name || "User"}
-                className="mx-auto rounded-full border-4 border-yellow-400 w-24 h-24 object-cover mb-4"
-              />
-              <h3 className="text-xl font-bold">{profile.name || "User"}</h3>
-              <p className="text-sm text-blue-200">
-                @{profile.username || "username"}
-              </p>
-              <p className="text-yellow-400 text-lg mt-2 font-semibold">
-                Score: {profile.score || 0}
-              </p>
-
-              <div className="mt-4 bg-blue-700/50 p-2 rounded-lg">
-                <p className="text-xs text-blue-200">
-                  Login dengan{" "}
-                  {profile.login_method === "google" ? "Google" : "Email"}
-                </p>
-              </div>
             </div>
           </div>
         )}
