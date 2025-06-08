@@ -109,14 +109,14 @@ const BelajarView = ({
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-6 lg:p-8 flex flex-col pb-16 md:pb-8">
         {/* Breadcrumb Navigation */}
-        <div className="flex items-center text-xs md:text-sm text-green-200 mb-4 md:mb-6">
+        <div className="flex items-center text-xs md:text-sm text-text-light/80 mb-4 md:mb-6">
           <span>Beranda</span>
           <span className="mx-2">/</span>
-          <span className="font-medium text-green-100">Belajar</span>
+          <span className="font-medium text-text-light">Belajar</span>
           {activeModuleId && (
             <>
               <span className="mx-2">/</span>
-              <span className="font-medium text-green-100">
+              <span className="font-medium text-text-light">
                 Modul {activeModuleId}
               </span>
             </>
@@ -156,7 +156,7 @@ const BelajarView = ({
               <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2 text-white">
                 Belajar Rangkai Kata
               </h1>
-              <p className="text-base md:text-lg text-green-200">
+              <p className="text-base md:text-lg text-text-light/80">
                 Pilih modul dan mulai tantangan!
               </p>
             </>

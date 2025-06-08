@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthLayout from "../../components/layout/AuthLayout";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
@@ -19,8 +19,9 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, error: authError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Reset form when component mounts
+  // Reset form dan error ketika komponen mounts atau saat berpindah halaman
   useEffect(() => {
     setFormData({
       email: "",
@@ -28,7 +29,7 @@ const Login = () => {
       rememberMe: false,
     });
     setErrors({});
-  }, []);
+  }, [location.pathname]);
 
   // Redirect if authenticated
   useEffect(() => {
@@ -97,7 +98,7 @@ const Login = () => {
     <AuthLayout heading="Login" subheading="Glad you're back!">
       <form onSubmit={handleSubmit} className="space-y-3">
         {(errors.general || authError) && (
-          <div className=" bg-opacity-10 border border-red-500 text-red-500 px-4 py-2 rounded mb-2 text-sm">
+          <div className="border border-red-500 text-white bg-red-500 px-4 py-2 rounded mb-2 text-sm">
             {errors.general || authError || "Login gagal. Silakan coba lagi."}
           </div>
         )}

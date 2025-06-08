@@ -5,10 +5,11 @@ import { Book, Trophy, LayoutDashboard, Settings, LogOut } from "lucide-react";
 import Button from "../ui/Button";
 
 export default function Sidebar() {
-  const { logout } = useAuth();
+  const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Deteksi ukuran layar saat komponen dimuat dan saat resize
   useEffect(() => {
@@ -25,11 +26,17 @@ export default function Sidebar() {
   }, []);
 
   const handleLogout = async () => {
+    // Mencegah multiple logout calls
+    if (isLoggingOut) return;
+
     try {
-      await logout();
-      navigate("/login");
+      setIsLoggingOut(true);
+
+      // Redirect ke halaman logout khusus alih-alih menangani logout di sini
+      navigate("/keluar");
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("Error during logout:", error);
+      setIsLoggingOut(false);
     }
   };
 
@@ -138,9 +145,10 @@ export default function Sidebar() {
           onClick={handleLogout}
           variant="text"
           className="my-1 mt-auto flex items-center gap-3"
+          disabled={isLoggingOut}
         >
           <LogOut size={20} />
-          <span>KELUAR</span>
+          <span>{isLoggingOut ? "KELUAR..." : "KELUAR"}</span>
         </Button>
       </nav>
 

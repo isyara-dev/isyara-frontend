@@ -7,7 +7,7 @@ import UserRank from "../components/leaderboard/UserRank";
 // Gunakan React.memo untuk komponen yang tidak perlu re-render
 const Header = React.memo(({ error }) => (
   <>
-    <div className="flex items-center text-sm text-third mb-6">
+    <div className="flex items-center text-sm text-text-light/80 mb-6">
       <span>Beranda</span>
       <span className="mx-2">/</span>
       <span className="font-medium text-text-light">Papan Skor</span>
@@ -16,7 +16,7 @@ const Header = React.memo(({ error }) => (
     <header className="mb-8">
       <div>
         <h1 className="text-4xl font-bold mb-2">Papan Peringkat</h1>
-        <p className="text-lg text-white">
+        <p className="text-lg text-text-light/80">
           Lihat peringkat pengguna terbaik dalam belajar bahasa isyarat
         </p>
         {error && (

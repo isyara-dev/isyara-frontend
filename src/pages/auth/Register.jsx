@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthLayout from "../../components/layout/AuthLayout";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
@@ -19,8 +19,9 @@ const Register = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, error: authError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Reset form when component mounts
+  // Reset form dan error ketika komponen mounts atau saat berpindah halaman
   useEffect(() => {
     setFormData({
       username: "",
@@ -29,7 +30,7 @@ const Register = () => {
       confirmPassword: "",
     });
     setErrors({});
-  }, []);
+  }, [location.pathname]);
 
   // Redirect if authenticated
   useEffect(() => {
@@ -96,7 +97,8 @@ const Register = () => {
       setIsSubmitting(true);
       try {
         await register(formData.username, formData.email, formData.password);
-        // Will redirect via the useEffect if successful
+        // Arahkan ke halaman verifikasi setelah berhasil mendaftar
+        navigate("/verify-email", { state: { email: formData.email } });
       } catch (error) {
         setErrors({
           ...errors,
@@ -110,10 +112,12 @@ const Register = () => {
 
   return (
     <AuthLayout heading="Sign Up" subheading="Hey Welcome">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-3">
         {(errors.general || authError) && (
-          <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-2 rounded mb-4">
-            {errors.general || authError}
+          <div className="border border-red-500 text-white bg-red-500 px-4 py-2 rounded mb-2 text-sm">
+            {errors.general ||
+              authError ||
+              "Registrasi gagal. Silakan coba lagi."}
           </div>
         )}
 

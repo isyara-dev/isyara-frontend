@@ -6,6 +6,56 @@ import apiClient from "../../services/api/apiClient";
 import Sidebar from "../../components/layout/Sidebar";
 import { Lock, Award } from "lucide-react"; // Menggunakan Award sebagai ikon piala yang lebih baik
 
+// Komponen Skeleton untuk profil
+const ProfileSkeleton = ({ isMobile }) => {
+  if (isMobile) {
+    return (
+      <div className="flex items-center bg-secondary rounded-lg p-4 shadow-md animate-pulse">
+        <div className="w-16 h-16 rounded-full bg-gray-600 mr-4"></div>
+        <div className="flex flex-col">
+          <div className="h-5 bg-gray-600 rounded w-24 mb-2"></div>
+          <div className="h-4 bg-gray-600 rounded w-20 mb-2"></div>
+          <div className="h-6 bg-gray-600 rounded w-12"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative mt-19">
+      {/* Avatar skeleton */}
+      <div className="absolute left-1/2 transform -translate-x-1/2 -top-16 z-10">
+        <div className="w-32 h-32 rounded-full bg-gray-600"></div>
+      </div>
+
+      {/* Profile Card skeleton */}
+      <div className="bg-secondary rounded-lg shadow-md pt-20 pb-6 px-6 animate-pulse">
+        <div className="flex flex-col items-center text-center">
+          <div className="h-6 bg-gray-600 rounded w-32 mb-2"></div>
+          <div className="h-4 bg-gray-600 rounded w-24 mb-4"></div>
+          <div className="h-10 bg-gray-600 rounded-full w-24"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Komponen Skeleton untuk kartu bahasa
+const LanguageCardSkeleton = () => (
+  <div className="rounded-lg p-3 md:p-4 shadow-md bg-secondary animate-pulse">
+    <div className="h-6 bg-gray-600 rounded w-3/4 mx-auto mb-3"></div>
+    <div className="h-4 bg-gray-600 rounded w-1/2 mx-auto mb-3"></div>
+    <div className="bg-gray-600 h-2 rounded-full mb-3"></div>
+    <div className="flex justify-between items-center">
+      <div>
+        <div className="h-3 bg-gray-600 rounded w-20 mb-1"></div>
+        <div className="h-5 bg-gray-600 rounded w-12"></div>
+      </div>
+      <div className="w-8 h-8 bg-gray-600 rounded-full"></div>
+    </div>
+  </div>
+);
+
 const DashboardPage = () => {
   const { currentUser, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -14,13 +64,13 @@ const DashboardPage = () => {
     name: "Loading...",
     username: "loading",
     score: 0,
-    avatarUrl: "/profile-avatar.png",
+    avatarUrl: null, // Ubah default menjadi null untuk deteksi loading
   });
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true); // State terpisah untuk loading profil
   const [error, setError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [dataFetched, setDataFetched] = useState(false);
-  const [profileFetched, setProfileFetched] = useState(false);
   const profileFetchedRef = useRef(false);
   const [imgError, setImgError] = useState(false);
 
@@ -50,20 +100,34 @@ const DashboardPage = () => {
     try {
       console.log("Fetching user profile from API...");
       profileFetchedRef.current = true; // Set flag sebelum fetch
+      setProfileLoading(true); // Mulai loading
 
       const userData = await apiClient.getUserProfile();
       if (userData) {
         console.log("User profile fetched:", userData);
+
+        // Pastikan avatar_url diambil dengan benar
+        const avatarUrl =
+          userData.avatar_url ||
+          userData.user_metadata?.avatar_url ||
+          userData.identities?.[0]?.identity_data?.avatar_url ||
+          null;
+
+        console.log("Avatar URL dari API:", avatarUrl);
+
         setUserProfile((prev) => ({
           ...prev,
-          name: userData.name || "User",
-          username: userData.username || "username",
+          name: userData.name || userData.user_metadata?.full_name || "User",
+          username:
+            userData.username || userData.email?.split("@")[0] || "username",
           score: userData.score || 0,
-          avatarUrl: userData.avatar_url || "/profile-avatar.png",
+          avatarUrl: avatarUrl,
         }));
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
+    } finally {
+      setProfileLoading(false); // Selesai loading
     }
   }, []); // Hapus semua dependensi untuk mencegah re-create function
 
@@ -71,11 +135,22 @@ const DashboardPage = () => {
   useEffect(() => {
     if (currentUser && !profileFetchedRef.current) {
       // Set initial profile from currentUser
+      const avatarUrl =
+        currentUser.avatar_url ||
+        currentUser.user_metadata?.avatar_url ||
+        currentUser.identities?.[0]?.identity_data?.avatar_url;
+
+      console.log("Avatar URL dari currentUser:", avatarUrl);
+
       setUserProfile((prev) => ({
         ...prev,
-        name: currentUser.name || "User",
-        username: currentUser.username || "username",
-        avatarUrl: currentUser.avatar_url || "/profile-avatar.png",
+        name:
+          currentUser.name || currentUser.user_metadata?.full_name || "User",
+        username:
+          currentUser.username ||
+          currentUser.email?.split("@")[0] ||
+          "username",
+        avatarUrl: avatarUrl,
       }));
 
       // Fetch profile hanya sekali
@@ -194,10 +269,10 @@ const DashboardPage = () => {
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-6 lg:p-8 flex flex-col pb-16 md:pb-8">
         {/* Breadcrumb Navigation */}
-        <div className="flex items-center text-xs md:text-sm text-green-200 mb-4 md:mb-6">
+        <div className="flex items-center text-xs md:text-sm text-text-light/80 mb-4 md:mb-6">
           <span>Beranda</span>
           <span className="mx-2">/</span>
-          <span className="font-medium text-green-100">Profile</span>
+          <span className="font-medium text-text-light">Profile</span>
         </div>
 
         {/* Page Header */}
@@ -205,7 +280,7 @@ const DashboardPage = () => {
           <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2 text-white">
             Profile Saya
           </h1>
-          <p className="text-base md:text-lg text-green-200">
+          <p className="text-base md:text-lg text-text-light/80">
             Lihat progress pembelajaran bahasa isyarat Anda
           </p>
         </header>
@@ -214,67 +289,81 @@ const DashboardPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8 flex-grow lg:items-start">
           {/* Profile Section - Ditampilkan di atas untuk mobile */}
           <div className="lg:col-span-1 lg:order-2 order-1">
-            {/* Mobile Profile View */}
-            <div className="flex md:hidden items-center bg-secondary rounded-lg p-4 shadow-md">
-              <div className="w-16 h-16 rounded-full bg-green-700 overflow-hidden mr-4 border-4 border-white shadow-lg">
-                <img
-                  src={getAvatarUrl()}
-                  alt={userProfile.name}
-                  className="w-full h-full object-cover"
-                  onError={() => setImgError(true)}
-                />
-              </div>
-              <div className="flex flex-col">
-                <h2 className="text-lg font-bold text-white">
-                  {userProfile.name}
-                </h2>
-                <p className="text-green-300 text-sm mb-1">
-                  @{userProfile.username}
-                </p>
-                <div className="flex items-center">
-                  <Award className="w-5 h-5 text-yellow-400 mr-1" />
-                  <span className="text-lg font-bold text-yellow-400">
-                    {userProfile.score}
-                  </span>
+            {profileLoading ? (
+              /* Skeleton untuk profil saat loading */
+              <>
+                <div className="md:hidden">
+                  <ProfileSkeleton isMobile={true} />
                 </div>
-              </div>
-            </div>
-
-            {/* Desktop Profile View with Podium Style */}
-            <div className="hidden md:block relative mt-19">
-              {/* Avatar that overlaps with card */}
-              <div className="absolute left-1/2 transform -translate-x-1/2 -top-16 z-10">
-                <div className="w-32 h-32 rounded-full bg-green-700 overflow-hidden border-4 border-white shadow-lg">
-                  <img
-                    src={getAvatarUrl()}
-                    alt={userProfile.name}
-                    className="w-full h-full object-cover"
-                    onError={() => setImgError(true)}
-                  />
+                <div className="hidden md:block">
+                  <ProfileSkeleton isMobile={false} />
                 </div>
-              </div>
-
-              {/* Profile Card */}
-              <div className="bg-secondary rounded-lg shadow-md pt-20 pb-6 px-6">
-                {/* User Info */}
-                <div className="flex flex-col items-center text-center">
-                  <h2 className="text-xl font-bold text-white mb-1">
-                    {userProfile.name}
-                  </h2>
-                  <p className="text-green-300 text-sm mb-3">
-                    @{userProfile.username}
-                  </p>
-
-                  {/* Score with Award Icon */}
-                  <div className="flex items-center justify-center bg-accent rounded-full px-4 py-2">
-                    <Award className="w-6 h-6 text-yellow-400 mr-2" />
-                    <span className="text-2xl font-bold text-yellow-400">
-                      {userProfile.score}
-                    </span>
+              </>
+            ) : (
+              <>
+                {/* Mobile Profile View */}
+                <div className="flex md:hidden items-center bg-secondary rounded-lg p-4 shadow-md">
+                  <div className="w-16 h-16 rounded-full bg-green-700 overflow-hidden mr-4 border-4 border-white shadow-lg">
+                    <img
+                      src={getAvatarUrl()}
+                      alt={userProfile.name}
+                      className="w-full h-full object-cover"
+                      onError={() => setImgError(true)}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-lg font-bold text-white">
+                      {userProfile.name}
+                    </h2>
+                    <p className="text-green-300 text-sm mb-1">
+                      @{userProfile.username}
+                    </p>
+                    <div className="flex items-center">
+                      <Award className="w-5 h-5 text-yellow-400 mr-1" />
+                      <span className="text-lg font-bold text-yellow-400">
+                        {userProfile.score}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+
+                {/* Desktop Profile View with Podium Style */}
+                <div className="hidden md:block relative mt-19">
+                  {/* Avatar that overlaps with card */}
+                  <div className="absolute left-1/2 transform -translate-x-1/2 -top-16 z-10">
+                    <div className="w-32 h-32 rounded-full bg-green-700 overflow-hidden border-4 border-white shadow-lg">
+                      <img
+                        src={getAvatarUrl()}
+                        alt={userProfile.name}
+                        className="w-full h-full object-cover"
+                        onError={() => setImgError(true)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Profile Card */}
+                  <div className="bg-secondary rounded-lg shadow-md pt-20 pb-6 px-6">
+                    {/* User Info */}
+                    <div className="flex flex-col items-center text-center">
+                      <h2 className="text-xl font-bold text-white mb-1">
+                        {userProfile.name}
+                      </h2>
+                      <p className="text-green-300 text-sm mb-3">
+                        @{userProfile.username}
+                      </p>
+
+                      {/* Score with Award Icon */}
+                      <div className="flex items-center justify-center bg-accent rounded-full px-4 py-2">
+                        <Award className="w-6 h-6 text-yellow-400 mr-2" />
+                        <span className="text-2xl font-bold text-yellow-400">
+                          {userProfile.score}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Language Progress Section */}
@@ -284,8 +373,11 @@ const DashboardPage = () => {
             </h2>
 
             {loading ? (
-              <div className="flex justify-center items-center h-40">
-                <div className="animate-spin rounded-full h-10 w-10 md:h-12 md:w-12 border-t-2 border-b-2 border-green-300"></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                {/* Tampilkan 3 skeleton cards saat loading */}
+                {[1, 2, 3].map((i) => (
+                  <LanguageCardSkeleton key={i} />
+                ))}
               </div>
             ) : error ? (
               <div className="text-red-300 text-center py-4">{error}</div>

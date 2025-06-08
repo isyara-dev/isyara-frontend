@@ -209,17 +209,17 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="flex items-center text-xs md:text-sm text-green-200 mb-4 md:mb-6">
+        <div className="flex items-center text-xs md:text-sm text-text-light/80 mb-4 md:mb-6">
           <span>Beranda</span>
           <span className="mx-2">/</span>
-          <span className="font-medium text-green-100">Pengaturan Profil</span>
+          <span className="font-medium text-text-light">Pengaturan Profil</span>
         </div>
 
         <header className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2 text-white">
             Pengaturan Profil
           </h1>
-          <p className="text-base md:text-lg text-green-200">
+          <p className="text-base md:text-lg text-text-light/80">
             Perbarui informasi akun Anda
           </p>
         </header>

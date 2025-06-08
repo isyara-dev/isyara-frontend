@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -15,6 +15,9 @@ import PracticePage from "./pages/belajar/PracticePage";
 import PeringkatPage from "./pages/peringkat/PeringkatPage";
 import ProfilePage from "./pages/pengaturan/ProfilePage";
 import SusunKataPage from "./pages/tantangan/SusunKataPage";
+import VerifyEmail from "./pages/auth/VerifyEmail";
+import ResendVerification from "./pages/auth/ResendVerification";
+import EmailVerification from "./pages/auth/EmailVerification";
 import { useAuth } from "./contexts/AuthContext";
 import { LearningProvider } from "./contexts/LearningContext";
 
@@ -24,27 +27,47 @@ import SubmodulePresenter from "./presenters/SubmodulePresenter";
 
 // Komponen untuk menangani logout
 const LogoutHandler = () => {
-  const { logout } = useAuth();
+  const auth = useAuth();
   const navigate = useNavigate();
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const handleLogout = async () => {
       try {
-        await logout();
-        navigate("/login");
+        // Bersihkan localStorage terlebih dahulu untuk memastikan state bersih
+        localStorage.removeItem("isyara_access_token");
+        localStorage.removeItem("isyara_user");
+        localStorage.removeItem("isyara_refresh_token");
+
+        // Jika auth tersedia, panggil logout
+        if (auth && auth.logout) {
+          await auth.logout();
+        }
+
+        // Tunggu sebentar untuk memastikan proses selesai
+        setTimeout(() => {
+          navigate("/login", { replace: true });
+        }, 1000);
       } catch (error) {
         console.error("Error signing out:", error);
-        navigate("/login");
+        setError("Gagal keluar. Mencoba ulang...");
+
+        // Jika gagal, coba lagi dengan pendekatan yang lebih sederhana
+        setTimeout(() => {
+          localStorage.clear(); // Bersihkan semua localStorage
+          window.location.href = "/login"; // Hard redirect
+        }, 2000);
       }
     };
 
     handleLogout();
-  }, [logout, navigate]);
+  }, [auth, navigate]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="bg-gradient-to-br from-background via-primary to-background flex items-center justify-center min-h-screen">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-4">Logging out...</h2>
+        <h2 className="text-2xl font-bold mb-4">Keluar dari aplikasi...</h2>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
       </div>
     </div>
@@ -92,6 +115,9 @@ function App() {
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/keluar" element={<LogoutHandler />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/resend-verification" element={<ResendVerification />} />
+        <Route path="/verify/:token" element={<EmailVerification />} />
 
         {/* Protected Routes with Learning Context */}
         <Route element={<ProtectedRoute />}>
