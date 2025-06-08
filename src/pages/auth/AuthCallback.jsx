@@ -36,6 +36,7 @@ const AuthCallback = () => {
                   name:
                     data.session.user.user_metadata?.full_name ||
                     data.session.user.email,
+                  avatar_url: data.session.user.user_metadata?.avatar_url,
                 };
 
                 // Simpan token dan data user yang sudah ditambahkan name

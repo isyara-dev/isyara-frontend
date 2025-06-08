@@ -247,6 +247,7 @@ const saveGoogleUser = async (userData) => {
       ...userData,
       name:
         userData.name || userData.user_metadata?.full_name || userData.email,
+      avatar_url: userData.user_metadata?.avatar_url,
     };
 
     // Lakukan request ke backend secara asinkron

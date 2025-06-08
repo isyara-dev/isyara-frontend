@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
       const enhancedUserData = {
         ...session.user,
         name: session.user.user_metadata?.full_name || session.user.email,
+        avatar_url: session.user_metadata?.avatar_url,
       };
 
       // Simpan token dan data user yang sudah ditambahkan name
@@ -187,8 +188,6 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await authService.register(username, email, password);
-      setCurrentUser(response.user);
-      setIsAuthenticated(true);
       return response;
     } catch (error) {
       setError(error.message || "Failed to register");
