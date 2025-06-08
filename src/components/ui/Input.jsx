@@ -33,7 +33,7 @@ const Input = ({
           type={
             type === "password" ? (showPassword ? "text" : "password") : type
           }
-          className={`w-full p-2 rounded-md border border-gray-300 bg-[#1f1d4d] text-text-light focus:outline-none focus:ring-1 focus:ring-primary text-sm ${
+          className={`w-full p-2 rounded-md border border-dark-purple bg-[#1f1d4d] text-text-light focus:outline-none focus:ring-1 focus:ring-secondary text-sm ${
             error ? "border-red-500" : ""
           } ${className}`}
           placeholder={placeholder}

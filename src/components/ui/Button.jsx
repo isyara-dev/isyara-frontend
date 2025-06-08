@@ -10,7 +10,7 @@ const Button = ({
   ...props
 }) => {
   const baseClasses =
-    "flex justify-center items-center py-3 px-4 rounded-md font-medium transition-colors";
+    "flex justify-center items-center py-2 px-4 rounded-md font-medium transition-colors";
 
   const variantClasses = {
     primary:

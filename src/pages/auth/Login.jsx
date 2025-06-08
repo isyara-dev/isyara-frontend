@@ -154,11 +154,11 @@ const Login = () => {
         </Button>
       </form>
 
-      <Divider text="Or" className="my-6" />
+      <Divider text="Or" className="my-4" />
 
       <GoogleButton />
 
-      <div className="mt-6 text-center">
+      <div className="mt-4 text-center">
         <p className="text-text-light">
           Don't have an account?{" "}
           <Link to="/signup" className="text-secondary hover:underline">
@@ -167,7 +167,7 @@ const Login = () => {
         </p>
       </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-500 border-opacity-30 flex justify-center space-x-4 text-xs text-text-light opacity-70">
+      <div className="mt-4 pt-4 border-t border-gray-500 border-opacity-30 flex justify-center space-x-4 text-xs text-text-light opacity-70">
         <Link to="/terms" className="hover:underline">
           Terms & Conditions
         </Link>
