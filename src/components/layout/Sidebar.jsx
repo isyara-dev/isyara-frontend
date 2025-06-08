@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Book, Trophy, LayoutDashboard, Settings, LogOut } from "lucide-react";
 import Button from "../ui/Button";
+import Logo from "../ui/Logo";
 
 export default function Sidebar() {
   const auth = useAuth();
@@ -49,7 +50,7 @@ export default function Sidebar() {
     },
     {
       id: "peringkat",
-      label: "PAPAN SKOR",
+      label: "PERINGKAT",
       path: "/peringkat",
       icon: <Trophy size={isMobile ? 24 : 20} />,
     },
@@ -109,11 +110,7 @@ export default function Sidebar() {
       {/* Logo Section */}
       <div className="p-6 pb-8 border-b border-secondary">
         <div className="flex items-center space-x-2">
-          <img
-            src="/src/assets/logo-text.png"
-            alt="ISYARA"
-            className="h-auto w-50"
-          />
+          <Logo size="large" />
         </div>
       </div>
 

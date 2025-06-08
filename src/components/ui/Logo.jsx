@@ -1,4 +1,5 @@
 import React from "react";
+import logoText from "../../assets/logo-text.png";
 
 const Logo = ({ size = "medium", className = "" }) => {
   const sizeClasses = {
@@ -10,7 +11,7 @@ const Logo = ({ size = "medium", className = "" }) => {
   return (
     <div className={`flex items-center ${className}`}>
       <img
-        src="/src/assets/logo-text.png" // Pastikan path ini benar
+        src={logoText}
         alt="Logo ISYARA"
         className={`${sizeClasses[size]} w-auto`} // Mengatur tinggi dan lebar otomatis
       />
