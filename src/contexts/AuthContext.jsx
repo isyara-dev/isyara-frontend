@@ -3,18 +3,13 @@ import React, {
   useState,
   useContext,
   useEffect,
-  useRef,
   useCallback,
+  useRef,
 } from "react";
 import authService from "../services/auth/authService";
-import apiService from "../services/api/apiClient";
 import supabase from "../services/supabaseClient";
 
-// Create the auth context
 const AuthContext = createContext();
-
-// Set this to true for development, false for production
-const DEBUG_MODE = false;
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -26,253 +21,139 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // For debouncing
-  const saveInProgressRef = useRef(false);
-  const timeoutRef = useRef(null);
+  // Gunakan ref untuk mencegah multiple logout calls dan infinite loop
+  const isLoggingOut = useRef(false);
+  const ignoreAuthChange = useRef(false);
 
-  // Track user ID that we've already saved to backend
-  const savedUserIdRef = useRef(null);
-  // Track if initial load has been done
-  const initialLoadDoneRef = useRef(false);
+  // Fungsi untuk menyimpan data sesi
+  const saveSessionData = useCallback((session) => {
+    if (!session) return;
 
-  // Custom logger that only logs in debug mode
-  const logger = useCallback((message, ...args) => {
-    if (DEBUG_MODE) {
-      console.log(message, ...args);
+    try {
+      // Tambahkan informasi nama dari metadata ke data user
+      const enhancedUserData = {
+        ...session.user,
+        name: session.user.user_metadata?.full_name || session.user.email,
+      };
+
+      // Simpan token dan data user yang sudah ditambahkan name
+      localStorage.setItem("isyara_access_token", session.access_token);
+      localStorage.setItem("isyara_user", JSON.stringify(enhancedUserData));
+
+      // Update state dengan data user yang sudah ditambahkan name
+      setCurrentUser(enhancedUserData);
+      setIsAuthenticated(true);
+
+      // Sinkronisasi ke backend sebagai proses terpisah (non-blocking)
+      // Kirim data user yang sudah ditambahkan name
+      authService.saveGoogleUser(enhancedUserData).catch((err) => {
+        console.error("Backend sync failed:", err);
+      });
+    } catch (error) {
+      console.error("Error saving session data:", error);
     }
   }, []);
 
-  // Create a stable debounced save function with useCallback
-  const saveGoogleUser = useCallback(
-    async (user, eventType) => {
-      // If we've already saved this user ID and it's not a fresh login, don't save again
-      if (savedUserIdRef.current === user.id && initialLoadDoneRef.current) {
-        logger(`User ${user.id} already saved, skipping backend request`);
-        // Still update the UI state if needed
-        if (!currentUser || currentUser.id !== user.id) {
-          setCurrentUser({
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.full_name || user.email.split("@")[0],
-            avatar_url: user.user_metadata?.avatar_url,
-          });
-          setIsAuthenticated(true);
-        }
-        return;
-      }
+  // Fungsi logout kita definisikan di sini dengan useCallback
+  const logout = useCallback(async () => {
+    // Mencegah multiple logout calls
+    if (isLoggingOut.current) return;
 
-      // Cancel any pending operations
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+    try {
+      isLoggingOut.current = true;
+      ignoreAuthChange.current = true;
 
-      // Return early if already processing
-      if (saveInProgressRef.current) {
-        return;
-      }
+      // Bersihkan localStorage terlebih dahulu
+      authService.logout();
 
-      // Set a short timeout to debounce multiple events
-      timeoutRef.current = setTimeout(async () => {
-        if (saveInProgressRef.current) return;
+      // Lalu update state
+      setCurrentUser(null);
+      setIsAuthenticated(false);
 
-        saveInProgressRef.current = true;
+      // Terakhir, panggil signOut dari Supabase
+      await supabase.auth.signOut();
 
-        try {
-          logger(`Processing auth event: ${eventType} for user ${user.id}`);
+      // Reset flag setelah logout selesai
+      setTimeout(() => {
+        ignoreAuthChange.current = false;
+        isLoggingOut.current = false;
+      }, 1000);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setError("Failed to sign out");
 
-          const userData = await authService.saveGoogleUser({
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.full_name || user.email.split("@")[0],
-            avatar_url: user.user_metadata?.avatar_url,
-          });
-
-          // Mark this user as saved
-          savedUserIdRef.current = user.id;
-          setCurrentUser(userData.user);
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error("Error saving Google user:", error);
-
-          // Still set the user from session if saving failed
-          setCurrentUser({
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.full_name || user.email.split("@")[0],
-            avatar_url: user.user_metadata?.avatar_url,
-          });
-          setIsAuthenticated(true);
-          // Still mark as saved to prevent future attempts
-          savedUserIdRef.current = user.id;
-        } finally {
-          saveInProgressRef.current = false;
-        }
-      }, 200);
-    },
-    [currentUser, logger]
-  );
-
-  // Load user profile on initial mount
-  useEffect(() => {
-    const loadUserProfile = async () => {
-      // Check if we have a token
-      const token = authService.getAccessToken();
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // Fetch user profile from /auth/me endpoint
-        const userData = await apiService.getUserProfile();
-        if (userData) {
-          setCurrentUser(userData);
-          setIsAuthenticated(true);
-        }
-      } catch (error) {
-        console.error("Error loading user profile:", error);
-        // If token is invalid, logout
-        if (error.response && error.response.status === 401) {
-          authService.logout();
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserProfile();
+      // Reset flag meskipun error
+      ignoreAuthChange.current = false;
+      isLoggingOut.current = false;
+    }
   }, []);
 
-  // Handle auth state changes - with selective processing
+  // Ini adalah SATU-SATUNYA useEffect yang kita butuhkan untuk menangani sesi
   useEffect(() => {
-    let authListener = null;
-
-    const setupAuth = async () => {
+    // 1. Cek sesi yang sudah ada saat aplikasi pertama kali dimuat
+    const checkExistingSession = async () => {
       try {
-        // First, check for existing session
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
         if (session) {
-          await saveGoogleUser(session.user, "INITIAL_SESSION");
-        } else {
-          // Check local storage as fallback
-          const localUser = authService.getCurrentUser();
-          if (localUser) {
-            setCurrentUser(localUser);
-            setIsAuthenticated(true);
-            savedUserIdRef.current = localUser.id;
-          }
+          // Gunakan fungsi saveSessionData untuk konsistensi
+          saveSessionData(session);
         }
-
-        // Mark initial load as complete
-        initialLoadDoneRef.current = true;
-
-        // Set up a single auth listener
-        const { data } = await supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            logger("Auth event:", event);
-
-            if (event === "SIGNED_OUT") {
-              setCurrentUser(null);
-              setIsAuthenticated(false);
-              savedUserIdRef.current = null;
-              return;
-            }
-
-            // Only process SIGNED_IN events - ignore TOKEN_REFRESHED, etc.
-            if (session && event === "SIGNED_IN") {
-              // Don't save again if we've already saved this user ID
-              if (savedUserIdRef.current !== session.user.id) {
-                await saveGoogleUser(session.user, event);
-              } else {
-                logger(
-                  `User ${session.user.id} already saved, ignoring duplicate SIGNED_IN event`
-                );
-              }
-            }
-          }
-        );
-
-        authListener = data.subscription;
       } catch (error) {
-        console.error("Auth setup error:", error);
+        console.error("Error checking session:", error);
       } finally {
-        setLoading(false);
+        setLoading(false); // Selesai loading awal
       }
     };
 
-    setupAuth();
+    checkExistingSession();
 
-    // Clean up
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (authListener) {
-        authListener.unsubscribe();
-      }
-    };
-  }, [saveGoogleUser, logger]);
+    // 2. Listener untuk perubahan state berikutnya (login, logout, refresh token)
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        // Jika sedang dalam proses logout, abaikan event state change
+        if (ignoreAuthChange.current) return;
 
-  // Pindahkan definisi fungsi logout ke atas sebelum useEffect
-  // Gunakan useCallback untuk mendefinisikan fungsi logout
-  const logout = useCallback(async () => {
-    try {
-      // Sign out from Supabase
-      await supabase.auth.signOut();
-      // Clear local storage
-      authService.logout();
-      setCurrentUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error("Error signing out:", error);
-      setError("Failed to sign out");
-    }
-  }, []);
-
-  // Kemudian gunakan fungsi logout dalam useEffect untuk pemeriksaan session
-  useEffect(() => {
-    // Jika tidak ada user yang terautentikasi, tidak perlu memeriksa
-    if (!isAuthenticated || !currentUser) {
-      return;
-    }
-
-    // Interval untuk memeriksa session setiap 5 menit
-    const sessionCheckInterval = setInterval(async () => {
-      try {
-        // Periksa session dari Supabase
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        // Jika tidak ada session valid, logout user
-        if (!session) {
-          console.log("Session tidak valid atau habis, melakukan logout...");
-          await logout();
-          // Tidak perlu redirect di sini, ProtectedRoute akan menanganinya
+        if (event === "SIGNED_IN" && session) {
+          // Gunakan fungsi saveSessionData untuk konsistensi
+          saveSessionData(session);
+        } else if (event === "SIGNED_OUT") {
+          // Jangan panggil fungsi logout lagi untuk mencegah infinite loop
+          // Cukup bersihkan state dan localStorage
+          if (!isLoggingOut.current) {
+            authService.logout();
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+          }
+        } else if (event === "TOKEN_REFRESHED" && session) {
+          // Jika token di-refresh oleh Supabase, update di localStorage
+          localStorage.setItem("isyara_access_token", session.access_token);
         }
-      } catch (error) {
-        console.error("Error memeriksa session:", error);
-        // Jika terjadi error saat memeriksa session, anggap session tidak valid
-        await logout();
       }
-    }, 5 * 60 * 1000); // Periksa setiap 5 menit
+    );
 
-    // Cleanup interval saat komponen unmount
+    // 3. Cleanup listener saat komponen unmount
     return () => {
-      clearInterval(sessionCheckInterval);
+      // Periksa apakah listener ada dan memiliki method unsubscribe
+      if (listener && typeof listener.unsubscribe === "function") {
+        try {
+          listener.unsubscribe();
+        } catch (error) {
+          console.error("Error unsubscribing from auth listener:", error);
+        }
+      }
     };
-  }, [isAuthenticated, currentUser, logout]);
+  }, [logout, saveSessionData]);
 
-  // Login method
+  // Login dengan email dan password
   const login = async (email, password) => {
     setLoading(true);
     setError("");
-
     try {
       const response = await authService.login(email, password);
+      // onAuthStateChange akan menangani sisanya, tapi kita bisa set state di sini untuk responsivitas
       setCurrentUser(response.user);
       setIsAuthenticated(true);
       return response;
@@ -284,7 +165,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register method
+  const googleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (error) {
+      console.error("Google login error:", error);
+      setError(error.message || "Failed to sign in with Google");
+      throw error;
+    }
+  };
+
   const register = async (username, email, password) => {
     setLoading(true);
     setError("");
@@ -302,32 +198,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Google login method
-  const googleLogin = async () => {
-    try {
-      const redirectUrl = import.meta.env.VITE_APP_URL 
-        ? `${import.meta.env.VITE_APP_URL}/auth/callback` 
-        : `${window.location.origin}/auth/callback`;
-        
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Google login error:", error);
-      setError(error.message || "Failed to sign in with Google");
-      throw error;
-    }
-  };
-
+  // --- Value yang diberikan ke seluruh aplikasi ---
   const value = {
     currentUser,
     loading,
@@ -341,5 +212,3 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
-export default AuthContext;

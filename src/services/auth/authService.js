@@ -13,10 +13,16 @@ const DEBUG_MODE = false;
 
 // Helper to store user data and tokens in local storage
 const storeUserData = (userData, tokens) => {
-  localStorage.setItem(USER_KEY, JSON.stringify(userData));
+  // Tambahkan field name jika belum ada
+  const enhancedUserData = {
+    ...userData,
+    name: userData.name || userData.user_metadata?.full_name || userData.email,
+  };
+
+  localStorage.setItem(USER_KEY, JSON.stringify(enhancedUserData));
 
   // Debug what we're trying to store
-  console.log("Storing user data:", userData);
+  console.log("Storing user data:", enhancedUserData);
   console.log("Token data structure:", tokens);
 
   // Handle different token formats
@@ -78,14 +84,24 @@ const getRefreshToken = () => {
 };
 
 // Register a new user with email and password
-const register = async (username, email, password) => {
+const register = async (
+  username,
+  email,
+  password,
+  requireEmailVerification = true
+) => {
   try {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({
+        username,
+        email,
+        password,
+        requireEmailVerification,
+      }),
     });
 
     const data = await response.json();
@@ -94,8 +110,8 @@ const register = async (username, email, password) => {
       throw new Error(data.message || "Registration failed");
     }
 
-    // Store user data and tokens
-    if (data.user) {
+    // Jika verifikasi email dibutuhkan, jangan simpan token
+    if (!requireEmailVerification && data.user) {
       const tokens = {
         access_token: data.access_token || data.token,
         refresh_token: data.refresh_token,
@@ -106,6 +122,63 @@ const register = async (username, email, password) => {
     return data;
   } catch (error) {
     console.error("Registration error:", error);
+    throw error;
+  }
+};
+
+// Tambahkan fungsi untuk mengirim ulang email verifikasi
+const resendVerificationEmail = async (email) => {
+  try {
+    const response = await fetch(`${API_URL}/auth/resend-verification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to resend verification email");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Resend verification error:", error);
+    throw error;
+  }
+};
+
+// Tambahkan fungsi untuk verifikasi email
+const verifyEmail = async (token) => {
+  try {
+    const response = await fetch(`${API_URL}/auth/verify-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Email verification failed");
+    }
+
+    // Jika verifikasi berhasil dan user data ada
+    if (data.user) {
+      const tokens = {
+        access_token: data.access_token || data.token,
+        refresh_token: data.refresh_token,
+      };
+      storeUserData(data.user, tokens);
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Email verification error:", error);
     throw error;
   }
 };
@@ -122,10 +195,12 @@ const login = async (email, password) => {
     });
 
     const data = await response.json();
-    console.log("Login response:", data); // Debug the response
 
     if (!response.ok) {
-      throw new Error(data.message || "Login failed");
+      // Pastikan selalu ada pesan error yang jelas
+      throw new Error(
+        data.message || data.error || "Login gagal. Silakan coba lagi."
+      );
     }
 
     // Store user data and tokens - handle the structure with session object
@@ -143,8 +218,21 @@ const login = async (email, password) => {
 
 // Logout the user
 const logout = () => {
-  clearUserData();
-  // You can add additional cleanup here if needed
+  try {
+    clearUserData();
+    // Tambahkan pembersihan data lain jika diperlukan
+    console.log("Logout successful: localStorage cleared");
+  } catch (error) {
+    console.error("Error during logout:", error);
+    // Fallback: coba bersihkan localStorage secara manual
+    try {
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+    } catch (e) {
+      console.error("Failed to clear localStorage:", e);
+    }
+  }
 };
 
 // Save Google user data to backend
@@ -154,48 +242,47 @@ const saveGoogleUser = async (userData) => {
       console.log("Saving Google user to backend:", userData.id);
     }
 
+    // Pastikan user data memiliki field name
+    const enhancedUserData = {
+      ...userData,
+      name:
+        userData.name || userData.user_metadata?.full_name || userData.email,
+    };
+
+    // Lakukan request ke backend secara asinkron
     const response = await fetch(`${API_URL}/auth/save-user`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(userData),
+      body: JSON.stringify(enhancedUserData),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      // Check if it's a duplicate error (500)
+      // Jika error duplikat, tidak perlu melakukan apa-apa karena token sudah disimpan di AuthContext
       if (
         response.status === 500 &&
         (data.message?.includes("already exists") ||
           data.message?.includes("duplicate"))
       ) {
         if (DEBUG_MODE) {
-          console.log("User already exists, using session data instead");
+          console.log(
+            "User already exists, token already saved by AuthContext"
+          );
         }
-        // Simply return the user data from the session
-        return {
-          user: userData,
-          token: getAccessToken() || "session-token",
-        };
+        return { user: enhancedUserData };
       }
       throw new Error(data.message || "Failed to save Google user");
     }
 
-    // Store user data and tokens
-    if (data.user) {
-      const tokens = {
-        access_token: data.access_token || data.token,
-        refresh_token: data.refresh_token,
-      };
-      storeUserData(data.user, tokens);
-    }
-
+    // Kita tidak perlu menyimpan token di sini karena sudah disimpan di AuthContext
     return data;
   } catch (error) {
     console.error("Error saving Google user:", error);
-    throw error;
+    // Jangan throw error di sini, biarkan proses autentikasi tetap berjalan
+    return { user: userData };
   }
 };
 
@@ -260,6 +347,8 @@ const authService = {
   saveGoogleUser,
   googleLogin,
   refreshToken,
+  resendVerificationEmail,
+  verifyEmail,
 };
 
 export default authService;

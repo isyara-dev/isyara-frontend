@@ -1,125 +1,126 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import AuthLayout from '../../components/layout/AuthLayout';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
-import Divider from '../../components/ui/Divider';
-import GoogleButton from '../../components/auth/GoogleButton';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import AuthLayout from "../../components/layout/AuthLayout";
+import Input from "../../components/ui/Input";
+import Button from "../../components/ui/Button";
+import Divider from "../../components/ui/Divider";
+import GoogleButton from "../../components/auth/GoogleButton";
+import { useAuth } from "../../contexts/AuthContext";
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
-  
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, error: authError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  
-  // Reset form when component mounts
+  const location = useLocation();
+
+  // Reset form dan error ketika komponen mounts atau saat berpindah halaman
   useEffect(() => {
     setFormData({
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     });
     setErrors({});
-  }, []);
-  
+  }, [location.pathname]);
+
   // Redirect if authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
-  
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    
+
     // Clear error when user types
     if (errors[name]) {
       setErrors({
         ...errors,
-        [name]: ''
+        [name]: "",
       });
     }
   };
-  
+
   const validateForm = () => {
     let isValid = true;
     const newErrors = {};
-    
+
     // Basic validation
     if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
+      newErrors.username = "Username is required";
       isValid = false;
     }
-    
+
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = "Email is invalid";
       isValid = false;
     }
-    
+
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
       isValid = false;
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = "Password must be at least 6 characters";
       isValid = false;
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
       isValid = false;
     }
-    
+
     setErrors(newErrors);
     return isValid;
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
       setIsSubmitting(true);
       try {
         await register(formData.username, formData.email, formData.password);
-        // Will redirect via the useEffect if successful
+        // Arahkan ke halaman verifikasi setelah berhasil mendaftar
+        navigate("/verify-email", { state: { email: formData.email } });
       } catch (error) {
         setErrors({
           ...errors,
-          general: error.message || 'Registration failed. Please try again.'
+          general: error.message || "Registration failed. Please try again.",
         });
       } finally {
         setIsSubmitting(false);
       }
     }
   };
-  
+
   return (
-    <AuthLayout 
-      heading="Sign Up" 
-      subheading="Hey Welcome"
-    >
-      <form onSubmit={handleSubmit}>
+    <AuthLayout heading="Sign Up" subheading="Hey Welcome">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {(errors.general || authError) && (
-          <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-2 rounded mb-4">
-            {errors.general || authError}
+          <div className="border border-red-500 text-white bg-red-500 px-4 py-2 rounded mb-2 text-sm">
+            {errors.general ||
+              authError ||
+              "Registrasi gagal. Silakan coba lagi."}
           </div>
         )}
-      
+
         <Input
           id="username"
           name="username"
@@ -130,7 +131,7 @@ const Register = () => {
           error={errors.username}
           required
         />
-        
+
         <Input
           id="email"
           name="email"
@@ -142,7 +143,7 @@ const Register = () => {
           error={errors.email}
           required
         />
-        
+
         <Input
           id="password"
           name="password"
@@ -154,7 +155,7 @@ const Register = () => {
           error={errors.password}
           required
         />
-        
+
         <Input
           id="confirmPassword"
           name="confirmPassword"
@@ -166,7 +167,7 @@ const Register = () => {
           error={errors.confirmPassword}
           required
         />
-        
+
         <div className="mt-6">
           <Button
             type="submit"
@@ -174,31 +175,37 @@ const Register = () => {
             fullWidth
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Signing Up...' : 'Sign Up'}
+            {isSubmitting ? "Signing Up..." : "Sign Up"}
           </Button>
         </div>
       </form>
-      
+
       <Divider text="Or" className="my-6" />
-      
+
       <GoogleButton />
-      
+
       <div className="mt-6 text-center">
         <p className="text-text-light">
-          Already Have an Account?{' '}
+          Already Have an Account?{" "}
           <Link to="/login" className="text-secondary hover:underline">
             Log in
           </Link>
         </p>
       </div>
-      
+
       <div className="mt-6 pt-4 border-t border-gray-500 border-opacity-30 flex justify-center space-x-4 text-xs text-text-light opacity-70">
-        <Link to="/terms" className="hover:underline">Terms & Conditions</Link>
-        <Link to="/support" className="hover:underline">Support</Link>
-        <Link to="/customer-care" className="hover:underline">Customer Care</Link>
+        <Link to="/terms" className="hover:underline">
+          Terms & Conditions
+        </Link>
+        <Link to="/support" className="hover:underline">
+          Support
+        </Link>
+        <Link to="/customer-care" className="hover:underline">
+          Customer Care
+        </Link>
       </div>
     </AuthLayout>
   );
 };
 
-export default Register; 
+export default Register;
