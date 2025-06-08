@@ -21,12 +21,12 @@ class GestureDetectionService {
   }
 
   playCorrectSound() {
-    try {
-      const audio = new Audio("/sounds/correct.mp3");
-      audio.play().catch((e) => console.log("Audio play failed:", e));
-    } catch (error) {
-      console.error("Error playing sound:", error);
-    }
+    // try {
+    //   const audio = new Audio("/sounds/correct.mp3");
+    //   audio.play().catch((e) => console.log("Audio play failed:", e));
+    // } catch (error) {
+    //   console.error("Error playing sound:", error);
+    // }
   }
 }
 

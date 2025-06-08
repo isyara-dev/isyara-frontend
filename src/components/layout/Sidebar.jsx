@@ -109,7 +109,11 @@ export default function Sidebar() {
       {/* Logo Section */}
       <div className="p-6 pb-8 border-b border-secondary">
         <div className="flex items-center space-x-2">
-          <h1 className="text-2xl font-bold text-text-light">ISYARA</h1>
+          <img
+            src="/src/assets/logo-text.png"
+            alt="ISYARA"
+            className="h-auto w-50"
+          />
         </div>
       </div>
 
@@ -155,7 +159,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="p-4 mt-auto border-t border-secondary text-xs text-text-light flex justify-between items-center">
         <p>ISYARA</p>
-        <p className="text-secondary">dicoding</p>
+        <p className="text-text-light/70">dicoding</p>
       </div>
     </div>
   );
