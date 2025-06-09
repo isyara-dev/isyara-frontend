@@ -24,6 +24,7 @@ export default function ProfilePage() {
     avatar_url: "/profile-avatar.png",
     login_method: "email",
   });
+  const [initialProfile, setInitialProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -55,6 +56,24 @@ export default function ProfilePage() {
     presenter.initialize();
   }, [presenter]);
 
+  // Save initial profile state for comparison
+  useEffect(() => {
+    if (!loading && !initialProfile) {
+      setInitialProfile({ ...profile });
+    }
+  }, [loading, profile, initialProfile]);
+
+  // Check if there are changes in the profile
+  const hasChanges = () => {
+    if (!initialProfile) return false;
+    if (selectedImage) return true;
+
+    return (
+      profile.name !== initialProfile.name ||
+      (profile.password && profile.password.trim() !== "")
+    );
+  };
+
   // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -73,7 +92,7 @@ export default function ProfilePage() {
     if (imgError || !previewUrl) {
       return `https://ui-avatars.com/api/?name=${encodeURIComponent(
         profile.name || "U"
-      )}&background=4ade80&color=fff&size=200`;
+      )}&background=3631b0&color=fff&size=200`;
     }
     return previewUrl;
   };
@@ -117,21 +136,21 @@ export default function ProfilePage() {
 
         {loading ? (
           <div className="flex justify-center items-center h-40">
-            <div className="animate-spin rounded-full h-10 w-10 md:h-12 md:w-12 border-t-2 border-b-2 border-green-300"></div>
+            <div className="animate-spin rounded-full h-10 w-10 md:h-12 md:w-12 border-t-2 border-b-2 border-purple"></div>
           </div>
         ) : (
           <div className="mx-auto w-full max-w-3xl">
-            <div className="bg-secondary rounded-lg mb-8 p-6 md:p-8 shadow-md">
+            <div className="bg-accent rounded-lg mb-8 p-6 md:p-8 shadow-md">
               <div className="flex flex-col items-center mb-8">
                 <div className="relative">
                   <img
                     src={getAvatarUrl()}
                     alt={profile.name || "User"}
-                    className="rounded-full w-28 h-28 object-cover border-4 border-white shadow-lg"
+                    className="rounded-full w-28 h-28 object-cover border-4 border-third shadow-lg"
                     onError={() => setImgError(true)}
                   />
                   <div className="absolute -bottom-1 -right-1">
-                    <label className="bg-accent hover:bg-accent/80 rounded-full p-2 text-white cursor-pointer shadow-md transition-all duration-300 flex items-center justify-center">
+                    <label className="bg-third hover:bg-purple-2 rounded-full p-2 text-white cursor-pointer shadow-md transition-all duration-300 flex items-center justify-center">
                       <FaCamera size={16} />
                       <input
                         type="file"
@@ -143,13 +162,13 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 {uploadingImage && (
-                  <div className="flex items-center mt-3 text-green-300">
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-300 mr-2"></div>
+                  <div className="flex items-center mt-3 text-purple">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-purple mr-2"></div>
                     <p className="text-sm">Mengunggah foto...</p>
                   </div>
                 )}
                 {selectedImage && !uploadingImage && (
-                  <p className="text-sm text-green-300 font-medium mt-2">
+                  <p className="text-sm text-purple font-medium mt-2">
                     Foto baru dipilih. Klik Simpan untuk mengonfirmasi.
                   </p>
                 )}
@@ -157,15 +176,15 @@ export default function ProfilePage() {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Informasi Dasar */}
-                <div className="border-b border-green-700/30 pb-6">
+                <div className="border-b border-third/30 pb-6">
                   <h3 className="text-lg font-semibold mb-4 text-white flex items-center">
-                    <FaInfoCircle className="mr-2 text-text-light" />
+                    <FaInfoCircle className="mr-2 text-purple" />
                     Informasi Dasar
                   </h3>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="flex items-center text-sm font-medium mb-2 text-green-100">
+                      <label className="flex items-center text-sm font-medium mb-2 text-text-light">
                         Nama
                       </label>
                       <input
@@ -174,12 +193,12 @@ export default function ProfilePage() {
                         placeholder="Nama Anda"
                         value={profile.name}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 rounded-lg bg-primary/40 text-white border border-green-700/30 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200"
+                        className="w-full px-4 py-2 rounded-lg bg-primary/40 text-white border border-third/30 focus:outline-none focus:ring-2 focus:ring-purple transition-all duration-200"
                       />
                     </div>
 
                     <div>
-                      <label className="flex items-center text-sm font-medium mb-2 text-green-100">
+                      <label className="flex items-center text-sm font-medium mb-2 text-text-light">
                         Username
                       </label>
                       <input
@@ -188,7 +207,7 @@ export default function ProfilePage() {
                         placeholder="username"
                         value={profile.username}
                         disabled={true}
-                        className="w-full px-4 py-2 rounded-lg bg-primary/20 text-white/70 border border-green-700/30 cursor-not-allowed"
+                        className="w-full px-4 py-2 rounded-lg bg-primary/20 text-white/70 border border-third/30 cursor-not-allowed"
                       />
                       <p className="text-xs text-purple mt-1 font-medium flex items-center">
                         <FaInfoCircle className="mr-1" /> Username tidak dapat
@@ -201,13 +220,13 @@ export default function ProfilePage() {
                 {/* Informasi Akun */}
                 <div className="pt-2">
                   <h3 className="text-lg font-semibold mb-4 text-white flex items-center">
-                    <FaLock className="mr-2 text-text-light" />
+                    <FaLock className="mr-2 text-purple" />
                     Informasi Akun
                   </h3>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="flex items-center text-sm font-medium mb-2 text-green-100">
+                      <label className="flex items-center text-sm font-medium mb-2 text-text-light">
                         <FaEnvelope className="mr-2" /> Email
                       </label>
                       <input
@@ -216,7 +235,7 @@ export default function ProfilePage() {
                         placeholder="email@example.com"
                         value={profile.email}
                         disabled={true}
-                        className="w-full px-4 py-2 rounded-lg bg-primary/20 text-white/70 border border-green-700/30 cursor-not-allowed"
+                        className="w-full px-4 py-2 rounded-lg bg-primary/20 text-white/70 border border-third/30 cursor-not-allowed"
                       />
                       <p className="text-xs text-purple mt-1 font-medium flex items-center">
                         <FaInfoCircle className="mr-1" /> Email tidak dapat
@@ -226,7 +245,7 @@ export default function ProfilePage() {
 
                     {profile.login_method !== "google" && (
                       <div>
-                        <label className="flex items-center text-sm font-medium mb-2 text-green-100">
+                        <label className="flex items-center text-sm font-medium mb-2 text-text-light">
                           <FaLock className="mr-2" /> Password Baru
                         </label>
                         <input
@@ -235,9 +254,9 @@ export default function ProfilePage() {
                           placeholder="Masukkan password baru"
                           value={profile.password}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 rounded-lg bg-primary/40 text-white border border-green-700/30 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200"
+                          className="w-full px-4 py-2 rounded-lg bg-primary/40 text-white border border-third/30 focus:outline-none focus:ring-2 focus:ring-purple transition-all duration-200"
                         />
-                        <p className="text-xs text-yellow-600 mt-1 font-medium flex items-center">
+                        <p className="text-xs text-yellow-400 mt-1 font-medium flex items-center">
                           <FaInfoCircle className="mr-1" />
                           Perubahan password akan mengakhiri sesi Anda dan
                           memerlukan login ulang
@@ -260,8 +279,12 @@ export default function ProfilePage() {
                   </div>
                   <button
                     type="submit"
-                    className="bg-gradient-to-r from-green-500 to-cyan-500 hover:from-green-600 hover:to-cyan-600 text-white px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg text-sm flex items-center gap-2"
-                    disabled={updating || uploadingImage}
+                    className={`bg-gradient-to-r ${
+                      hasChanges()
+                        ? "from-third to-purple-2 hover:from-third/90 hover:to-purple-2/90"
+                        : "from-gray-500 to-gray-600 cursor-not-allowed opacity-70"
+                    } text-white px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg text-sm flex items-center gap-2`}
+                    disabled={updating || uploadingImage || !hasChanges()}
                   >
                     {updating ? (
                       <>
@@ -271,7 +294,7 @@ export default function ProfilePage() {
                     ) : (
                       <>
                         <FaCheckCircle />
-                        <span>Simpan Perubahan</span>
+                        <span>Simpan </span>
                       </>
                     )}
                   </button>
@@ -284,7 +307,7 @@ export default function ProfilePage() {
         {/* Konfirmasi Logout */}
         {showLogoutConfirm && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-secondary rounded-lg p-6 max-w-sm w-full notification-fade-in">
+            <div className="bg-accent rounded-lg p-6 max-w-sm w-full notification-fade-in">
               <h3 className="text-xl font-bold text-white mb-4">
                 Konfirmasi Keluar
               </h3>
@@ -294,7 +317,7 @@ export default function ProfilePage() {
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                  className="px-4 py-2 bg-primary hover:bg-primary/80 rounded-lg text-white transition-colors"
                 >
                   Batal
                 </button>
