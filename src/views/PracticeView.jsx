@@ -169,7 +169,7 @@ function PracticeView({
         {/* Hint image (right) - HANYA UNTUK DESKTOP */}
         <div className="hidden md:block">
           {isNavigating ? (
-            <div className="flex flex-col justify-center items-center bg-blue-700 rounded-xl h-full">
+            <div className="flex flex-col justify-center items-center rounded-xl h-full">
               <div className="flex flex-col items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-300 mb-4"></div>
                 <p>Memuat petunjuk...</p>
