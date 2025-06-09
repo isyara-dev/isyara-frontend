@@ -6,6 +6,7 @@ import Button from "../../components/ui/Button";
 import Divider from "../../components/ui/Divider";
 import GoogleButton from "../../components/auth/GoogleButton";
 import { useAuth } from "../../contexts/AuthContext";
+import NotificationService from "../../services/NotificationService";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -61,28 +62,33 @@ const Register = () => {
 
     // Basic validation
     if (!formData.username.trim()) {
-      newErrors.username = "Username is required";
+      newErrors.username = "Username harus diisi";
+      isValid = false;
+    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      // Validasi username hanya boleh berisi huruf, angka, dan underscore
+      newErrors.username =
+        "Username hanya boleh berisi huruf, angka, dan underscore";
       isValid = false;
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "Email harus diisi";
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = "Format email tidak valid";
       isValid = false;
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Password harus diisi";
       isValid = false;
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = "Password minimal 6 karakter";
       isValid = false;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = "Password tidak cocok";
       isValid = false;
     }
 
@@ -97,39 +103,79 @@ const Register = () => {
       setIsSubmitting(true);
       try {
         await register(formData.username, formData.email, formData.password);
+        // Tampilkan notifikasi sukses
+        NotificationService.show(
+          "Pendaftaran berhasil! Silakan verifikasi email Anda.",
+          "success"
+        );
         // Arahkan ke halaman verifikasi setelah berhasil mendaftar
         navigate("/verify-email", { state: { email: formData.email } });
       } catch (error) {
-        setErrors({
-          ...errors,
-          general: error.message || "Registration failed. Please try again.",
-        });
+        // Tampilkan pesan error yang spesifik
+        let errorMessage = "Pendaftaran gagal. Silakan coba lagi.";
+
+        if (error.message && error.message.includes("already registered")) {
+          errorMessage =
+            "Email sudah terdaftar. Silakan gunakan email lain atau login dengan email tersebut.";
+          setErrors({
+            ...errors,
+            email: "Email sudah terdaftar",
+          });
+        } else if (error.message && error.message.includes("already exists")) {
+          errorMessage =
+            "Username sudah digunakan. Silakan pilih username lain.";
+          setErrors({
+            ...errors,
+            username: "Username sudah digunakan",
+          });
+        } else if (error.message && error.message.includes("network")) {
+          errorMessage =
+            "Koneksi internet terputus. Periksa koneksi Anda dan coba lagi.";
+        } else if (error.message && error.message.includes("timeout")) {
+          errorMessage = "Server tidak merespons. Silakan coba lagi nanti.";
+        } else if (
+          error.message &&
+          error.message.includes("invalid username")
+        ) {
+          errorMessage =
+            "Username hanya boleh berisi huruf, angka, dan underscore.";
+          setErrors({
+            ...errors,
+            username:
+              "Username hanya boleh berisi huruf, angka, dan underscore",
+          });
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
+        NotificationService.show(errorMessage, "error");
+
+        setErrors((prev) => ({
+          ...prev,
+          general: errorMessage,
+        }));
       } finally {
         setIsSubmitting(false);
       }
+    } else {
+      // Jika ada error validasi form, tampilkan notifikasi
+      NotificationService.show("Mohon lengkapi form dengan benar", "warning");
     }
   };
 
   return (
-    <AuthLayout heading="Sign Up" subheading="Hey Welcome">
+    <AuthLayout heading="Daftar" subheading="Selamat Datang">
       <form onSubmit={handleSubmit} className="space-y-3">
-        {(errors.general || authError) && (
-          <div className="border border-red-500 text-white bg-red-500 px-4 py-2 rounded mb-2 text-sm">
-            {errors.general ||
-              authError ||
-              "Registrasi gagal. Silakan coba lagi."}
-          </div>
-        )}
-
         <Input
           id="username"
           name="username"
           label="Username"
-          placeholder="Enter your username"
+          placeholder="Masukkan username Anda"
           value={formData.username}
           onChange={handleChange}
           error={errors.username}
           required
+          hint="Username hanya boleh berisi huruf, angka, dan underscore"
         />
 
         <Input
@@ -137,7 +183,7 @@ const Register = () => {
           name="email"
           type="email"
           label="Email"
-          placeholder="Enter your email"
+          placeholder="Masukkan email Anda"
           value={formData.email}
           onChange={handleChange}
           error={errors.email}
@@ -149,7 +195,7 @@ const Register = () => {
           name="password"
           type="password"
           label="Password"
-          placeholder="Enter your password"
+          placeholder="Masukkan password Anda"
           value={formData.password}
           onChange={handleChange}
           error={errors.password}
@@ -160,8 +206,8 @@ const Register = () => {
           id="confirmPassword"
           name="confirmPassword"
           type="password"
-          label="Confirm Password"
-          placeholder="Confirm your password"
+          label="Konfirmasi Password"
+          placeholder="Konfirmasi password Anda"
           value={formData.confirmPassword}
           onChange={handleChange}
           error={errors.confirmPassword}
@@ -175,33 +221,33 @@ const Register = () => {
             fullWidth
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Signing Up..." : "Sign Up"}
+            {isSubmitting ? "Sedang mendaftar..." : "Daftar"}
           </Button>
         </div>
       </form>
 
-      <Divider text="Or" className="my-6" />
+      <Divider text="Atau" className="my-6" />
 
       <GoogleButton />
 
       <div className="mt-6 text-center">
         <p className="text-text-light">
-          Already Have an Account?{" "}
+          Sudah punya akun?{" "}
           <Link to="/login" className="text-secondary hover:underline">
-            Log in
+            Masuk
           </Link>
         </p>
       </div>
 
       <div className="mt-6 pt-4 border-t border-gray-500 border-opacity-30 flex justify-center space-x-4 text-xs text-text-light opacity-70">
         <Link to="/terms" className="hover:underline">
-          Terms & Conditions
+          Syarat & Ketentuan
         </Link>
         <Link to="/support" className="hover:underline">
-          Support
+          Bantuan
         </Link>
         <Link to="/customer-care" className="hover:underline">
-          Customer Care
+          Layanan Pelanggan
         </Link>
       </div>
     </AuthLayout>

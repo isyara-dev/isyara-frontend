@@ -46,21 +46,21 @@ const PodiumSkeleton = React.memo(() => (
   <div className="my-10">
     <div className="flex justify-center items-end space-x-2">
       {/* Rank 2 */}
-      <div className="flex flex-col items-center w-28 md:w-36 mx-1 md:mx-2 animate-pulse">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-secondary/60 mb-2"></div>
-        <div className="w-full h-28 md:h-32 bg-secondary/50 rounded-t-lg"></div>
+      <div className="flex flex-col items-center w-24 sm:w-28 md:w-36 mx-1 md:mx-2 animate-pulse">
+        <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-secondary/60 mb-2"></div>
+        <div className="w-full h-24 sm:h-28 md:h-32 bg-secondary/50 rounded-t-lg"></div>
       </div>
 
       {/* Rank 1 */}
-      <div className="flex flex-col items-center w-28 md:w-36 mx-1 md:mx-2 animate-pulse">
-        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-secondary/60 mb-2"></div>
-        <div className="w-full h-36 md:h-40 bg-secondary/50 rounded-t-lg"></div>
+      <div className="flex flex-col items-center w-24 sm:w-28 md:w-36 mx-1 md:mx-2 animate-pulse">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-secondary/60 mb-2"></div>
+        <div className="w-full h-28 sm:h-36 md:h-40 bg-secondary/50 rounded-t-lg"></div>
       </div>
 
       {/* Rank 3 */}
-      <div className="flex flex-col items-center w-28 md:w-36 mx-1 md:mx-2 animate-pulse">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-secondary/60 mb-2"></div>
-        <div className="w-full h-28 md:h-32 bg-secondary/50 rounded-t-lg"></div>
+      <div className="flex flex-col items-center w-24 sm:w-28 md:w-36 mx-1 md:mx-2 animate-pulse">
+        <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-secondary/60 mb-2"></div>
+        <div className="w-full h-24 sm:h-28 md:h-32 bg-secondary/50 rounded-t-lg"></div>
       </div>
     </div>
   </div>
@@ -164,9 +164,11 @@ const LeaderboardView = React.memo(
   }) => {
     // Pastikan currentUserRank memiliki data yang benar
     const userRankData = currentUserRank || {
+      rank: isUserOutsideTopRanks ? "-" : "?",
       name: currentUser?.name || "Anda",
       username: currentUser?.username || "user",
-      score: currentUser?.score || 60, // Gunakan skor default 60 jika tidak ada
+      score: currentUser?.best_score || 0,
+      avatar_url: currentUser?.avatar_url || null,
     };
 
     // Format error message untuk ditampilkan
@@ -187,40 +189,49 @@ const LeaderboardView = React.memo(
     return (
       <div className="flex min-h-screen bg-gradient-to-br from-background via-primary to-background text-text-light">
         <Sidebar />
-        <main className="flex-1 p-8 flex flex-col pb-24 md:pb-8">
-          <Header error={error ? formatErrorMessage(error) : null} />
+        <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col pb-24 md:pb-8 overflow-x-hidden">
+          <div className="max-w-full overflow-x-auto">
+            <Header error={error ? formatErrorMessage(error) : null} />
 
-          {error ? (
-            <ErrorMessage
-              message={formatErrorMessage(error)}
-              onRefresh={onRefresh}
-            />
-          ) : (
-            <>
-              {loading ? (
-                <PodiumSkeleton />
-              ) : (
-                <LeaderboardPodium topUsers={topUsers} />
-              )}
-              {loading ? (
-                <ListSkeleton />
-              ) : (
-                <LeaderboardList
-                  otherUsers={otherUsers}
-                  currentUser={currentUser}
-                  onRefresh={onRefresh}
-                />
-              )}
-              {loading ? (
-                <UserRankSkeleton />
-              ) : (
-                <UserRank
-                  userRank={userRankData}
-                  isOutsideTopRanks={isUserOutsideTopRanks || !currentUserRank}
-                />
-              )}
-            </>
-          )}
+            {error ? (
+              <ErrorMessage
+                message={formatErrorMessage(error)}
+                onRefresh={onRefresh}
+              />
+            ) : (
+              <>
+                <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                  {loading ? (
+                    <PodiumSkeleton />
+                  ) : (
+                    <LeaderboardPodium topUsers={topUsers} />
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  {loading ? (
+                    <ListSkeleton />
+                  ) : (
+                    <LeaderboardList
+                      otherUsers={otherUsers}
+                      currentUser={currentUser}
+                      onRefresh={onRefresh}
+                    />
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  {loading ? (
+                    <UserRankSkeleton />
+                  ) : (
+                    <UserRank
+                      userRank={userRankData}
+                      isOutsideTopRanks={isUserOutsideTopRanks}
+                      currentUser={currentUser}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </main>
       </div>
     );

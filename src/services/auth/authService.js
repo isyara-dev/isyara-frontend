@@ -11,6 +11,9 @@ const REFRESH_TOKEN_KEY = "isyara_refresh_token";
 // Add this at the top of the file
 const DEBUG_MODE = false;
 
+// Import supabase
+import supabase from "../supabaseClient";
+
 // Helper to store user data and tokens in local storage
 const storeUserData = (userData, tokens) => {
   // Tambahkan field name jika belum ada
@@ -27,16 +30,43 @@ const storeUserData = (userData, tokens) => {
 
   // Handle different token formats
   if (tokens) {
-    // Handle session object format from the API response you shared
+    // Handle Supabase session specifically
+    if (tokens.supabase_session) {
+      console.log("Menyimpan token Supabase dari backend");
+      // Simpan token Supabase ke localStorage khusus
+      localStorage.setItem(
+        "supabase_access_token",
+        tokens.supabase_session.access_token
+      );
+      localStorage.setItem(
+        "supabase_refresh_token",
+        tokens.supabase_session.refresh_token
+      );
+
+      // Juga update session Supabase secara langsung
+      try {
+        const { data, error } = supabase.auth.setSession({
+          access_token: tokens.supabase_session.access_token,
+          refresh_token: tokens.supabase_session.refresh_token,
+        });
+        if (error) {
+          console.error("Error setting Supabase session:", error);
+        } else {
+          console.log("Supabase session set successfully");
+        }
+      } catch (err) {
+        console.error("Error updating Supabase session:", err);
+      }
+    }
+
+    // Handle regular token formats
     if (tokens.session && tokens.session.access_token) {
       console.log("Storing access token from session object");
       localStorage.setItem(ACCESS_TOKEN_KEY, tokens.session.access_token);
       if (tokens.session.refresh_token) {
         localStorage.setItem(REFRESH_TOKEN_KEY, tokens.session.refresh_token);
       }
-    }
-    // Handle direct tokens object format
-    else if (typeof tokens === "object") {
+    } else if (typeof tokens === "object") {
       if (tokens.access_token) {
         console.log("Storing access token from direct object");
         localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
@@ -44,9 +74,7 @@ const storeUserData = (userData, tokens) => {
       if (tokens.refresh_token) {
         localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
       }
-    }
-    // Handle string token (legacy)
-    else if (typeof tokens === "string") {
+    } else if (typeof tokens === "string") {
       console.log("Storing string token");
       localStorage.setItem(ACCESS_TOKEN_KEY, tokens);
     }
@@ -186,6 +214,7 @@ const verifyEmail = async (token) => {
 // Login with email and password
 const login = async (email, password) => {
   try {
+    // 1. Login ke backend
     const response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: {
@@ -197,15 +226,32 @@ const login = async (email, password) => {
     const data = await response.json();
 
     if (!response.ok) {
-      // Pastikan selalu ada pesan error yang jelas
       throw new Error(
         data.message || data.error || "Login gagal. Silakan coba lagi."
       );
     }
 
-    // Store user data and tokens - handle the structure with session object
+    // 2. Login ke Supabase juga untuk mendapatkan token storage
+    try {
+      const { data: supabaseData, error } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+      if (error) {
+        console.error("Supabase login error:", error);
+      } else {
+        console.log("Supabase login berhasil:", supabaseData.user?.id);
+        // Tambahkan data Supabase ke respons backend
+        data.supabase = supabaseData;
+      }
+    } catch (supabaseError) {
+      console.error("Error saat login ke Supabase:", supabaseError);
+    }
+
+    // 3. Store user data and tokens
     if (data.user) {
-      // Pass the entire data object to storeUserData to handle session structure
       storeUserData(data.user, data);
     }
 
