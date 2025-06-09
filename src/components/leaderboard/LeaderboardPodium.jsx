@@ -55,11 +55,11 @@ const PodiumStep = ({ user, position }) => {
   let baseColorClass = "bg-secondary/90";
   let borderColorClass = "border-third";
   let shadowClass = "shadow-[0_0_15px_2px_rgba(96,165,250,0.4)]";
-  let avatarSizeClass = "w-16 h-16 md:w-20 md:h-20";
-  let barHeightClass = "h-28 md:h-32";
-  let scoreTextSizeClass = "text-2xl md:text-2xl";
-  let nameTextSizeClass = "text-sm md:text-base";
-  let usernameTextSizeClass = "text-xs md:text-sm opacity-80";
+  let avatarSizeClass = "w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20";
+  let barHeightClass = "h-24 sm:h-28 md:h-32";
+  let scoreTextSizeClass = "text-xl sm:text-2xl md:text-2xl";
+  let nameTextSizeClass = "text-xs sm:text-sm md:text-base";
+  let usernameTextSizeClass = "text-xs opacity-80";
   let contentColorClass = "text-white";
 
   const avatarOverlapMargin = "-mb-8 md:-mb-5";
@@ -69,9 +69,9 @@ const PodiumStep = ({ user, position }) => {
     borderColorClass = "border-yellow-400";
     contentColorClass = "text-yellow-400";
     shadowClass = "shadow-[0_0_20px_5px_rgba(250,204,21,0.5)]";
-    avatarSizeClass = "w-20 h-20 md:w-24 md:h-24";
-    barHeightClass = "h-36 md:h-40";
-    nameTextSizeClass = "text-base md:text-lg";
+    avatarSizeClass = "w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24";
+    barHeightClass = "h-28 sm:h-36 md:h-40";
+    nameTextSizeClass = "text-sm sm:text-base md:text-lg";
   } else if (position === 3) {
     borderColorClass = "border-green-500";
     shadowClass = "shadow-[0_0_15px_2px_rgba(74,222,128,0.5)]";
@@ -79,13 +79,13 @@ const PodiumStep = ({ user, position }) => {
 
   const scoreString = String(safeUser.score);
   if (scoreString.length > 6) {
-    scoreTextSizeClass = "text-xl md:text-2xl";
+    scoreTextSizeClass = "text-lg sm:text-xl md:text-2xl";
   } else if (scoreString.length > 5) {
-    scoreTextSizeClass = "text-2xl md:text-3xl";
+    scoreTextSizeClass = "text-xl sm:text-2xl md:text-3xl";
   }
 
   return (
-    <div className="flex flex-col items-center w-28 md:w-36 mx-1 md:mx-2">
+    <div className="flex flex-col items-center w-24 sm:w-28 md:w-36 mx-1 md:mx-2">
       <div className={`relative z-10 ${avatarOverlapMargin}`}>
         <AvatarDisplay
           user={safeUser}
@@ -97,7 +97,7 @@ const PodiumStep = ({ user, position }) => {
       </div>
       <div
         className={`w-full ${barHeightClass} ${baseColorClass} rounded-t-lg shadow-md flex-shrink-0 
-                      flex flex-col justify-start items-center ${contentColorClass} p-3 ${barTopPadding} text-center`}
+                      flex flex-col justify-start items-center ${contentColorClass} p-2 sm:p-3 ${barTopPadding} text-center`}
       >
         <div className="flex flex-col items-center w-full">
           <h3
@@ -114,7 +114,7 @@ const PodiumStep = ({ user, position }) => {
           </p>
         </div>
         <p
-          className={`${scoreTextSizeClass} font-bold break-all leading-normal mb-2 md:mb-3`}
+          className={`${scoreTextSizeClass} font-bold break-all leading-normal mb-1 sm:mb-2 md:mb-3`}
         >
           {scoreString}
         </p>
@@ -136,7 +136,7 @@ const LeaderboardPodium = ({ topUsers }) => {
   const user3 = topUsers[2];
 
   return (
-    <div className="my-10">
+    <div className="my-6 sm:my-10 min-w-[320px]">
       <div className="flex flex-row justify-center items-end md:space-x-2">
         {/* Untuk mobile, gunakan flex-row dengan order yang berbeda dan pastikan rank 1 di tengah */}
         {user2 && (

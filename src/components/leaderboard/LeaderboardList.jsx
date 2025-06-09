@@ -31,13 +31,13 @@ const UserListItem = React.memo(({ user, isHighlighted = false }) => {
         />
       </div>
 
-      <div className="flex-1">
-        <h3 className="font-bold">{user.name}</h3>
-        <p className="text-white/70 text-sm">{user.username}</p>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold truncate">{user.name}</h3>
+        <p className="text-white/70 text-sm truncate">{user.username}</p>
       </div>
 
-      <div className="flex items-center justify-center w-24">
-        <span className="text-xl font-bold ">{user.score}</span>
+      <div className="flex items-center justify-center w-16 sm:w-24 flex-shrink-0 ml-2">
+        <span className="text-lg sm:text-xl font-bold">{user.score}</span>
       </div>
     </div>
   );
@@ -65,7 +65,7 @@ const EmptyList = React.memo(() => (
 
 const LeaderboardList = ({ otherUsers, currentUser, onRefresh }) => {
   return (
-    <div className="bg-secondary/50 rounded-xl border border-primary overflow-hidden mb-6 backdrop-blur-sm shadow-lg">
+    <div className="bg-secondary/50 rounded-xl border border-primary overflow-hidden mb-6 backdrop-blur-sm shadow-lg min-w-[320px]">
       <div className="p-4 bg-primary border-b border-third flex justify-between items-center">
         <h2 className="font-bold text-lg">Peringkat Top 10</h2>
         {onRefresh && (
@@ -89,21 +89,23 @@ const LeaderboardList = ({ otherUsers, currentUser, onRefresh }) => {
         )}
       </div>
 
-      {otherUsers && otherUsers.length > 0 ? (
-        <div>
-          {otherUsers.map((user) => (
-            <UserListItem
-              key={user.id}
-              user={user}
-              isHighlighted={
-                currentUser && user.username === `@${currentUser.username}`
-              }
-            />
-          ))}
-        </div>
-      ) : (
-        <EmptyList />
-      )}
+      <div className="overflow-x-auto">
+        {otherUsers && otherUsers.length > 0 ? (
+          <div>
+            {otherUsers.map((user) => (
+              <UserListItem
+                key={user.id}
+                user={user}
+                isHighlighted={
+                  currentUser && user.username === `@${currentUser.username}`
+                }
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyList />
+        )}
+      </div>
     </div>
   );
 };

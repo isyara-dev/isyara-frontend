@@ -432,7 +432,11 @@ const HandGestureDetector = memo(
         <canvas
           ref={canvasRef}
           className="absolute top-0 left-0 w-full h-full object-cover rounded-xl"
-          style={{ transform: "scale(-1, 1)" }} // Mirror the canvas
+          style={{
+            transform: "scale(-1, 1)", // Mirror the canvas
+            aspectRatio: "4/3", // Tetapkan aspek rasio
+            objectFit: "cover", // Pastikan gambar menutupi area dengan benar
+          }}
         />
 
         {/* <div className="absolute top-4 left-4 bg-black/50 px-3 py-1 rounded">

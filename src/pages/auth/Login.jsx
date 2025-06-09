@@ -7,6 +7,7 @@ import Checkbox from "../../components/ui/Checkbox";
 import Divider from "../../components/ui/Divider";
 import GoogleButton from "../../components/auth/GoogleButton";
 import { useAuth } from "../../contexts/AuthContext";
+import NotificationService from "../../services/NotificationService";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -42,13 +43,13 @@ const Login = () => {
     const newErrors = {};
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "Email harus diisi";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = "Format email tidak valid";
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Password harus diisi";
     }
 
     setErrors(newErrors);
@@ -78,15 +79,42 @@ const Login = () => {
       setIsSubmitting(true);
       try {
         await login(formData.email, formData.password);
+        // Tampilkan notifikasi sukses
+        NotificationService.show(
+          "Login berhasil! Mengalihkan ke dashboard...",
+          "success"
+        );
         // Will redirect via the useEffect if successful
       } catch (error) {
+        // Tampilkan pesan error yang spesifik
+        let errorMessage = "Login gagal. Silakan coba lagi.";
+
+        if (error.message && error.message.includes("Invalid login")) {
+          errorMessage = "Email atau password salah. Silakan periksa kembali.";
+        } else if (error.message && error.message.includes("network")) {
+          errorMessage =
+            "Koneksi internet terputus. Periksa koneksi Anda dan coba lagi.";
+        } else if (error.message && error.message.includes("timeout")) {
+          errorMessage = "Server tidak merespons. Silakan coba lagi nanti.";
+        } else if (error.message && error.message.includes("not verified")) {
+          errorMessage =
+            "Email belum diverifikasi. Silakan verifikasi email Anda terlebih dahulu.";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
+        NotificationService.show(errorMessage, "error");
+
         setErrors({
           ...errors,
-          general: error.message || "Login failed. Please try again.",
+          general: errorMessage,
         });
       } finally {
         setIsSubmitting(false);
       }
+    } else {
+      // Jika ada error validasi form, tampilkan notifikasi
+      NotificationService.show("Mohon lengkapi form dengan benar", "warning");
     }
   };
 
@@ -95,20 +123,14 @@ const Login = () => {
   };
 
   return (
-    <AuthLayout heading="Login" subheading="Glad you're back!">
+    <AuthLayout heading="Login" subheading="Senang Anda kembali!">
       <form onSubmit={handleSubmit} className="space-y-3">
-        {(errors.general || authError) && (
-          <div className="border border-red-500 text-white bg-red-500 px-4 py-2 rounded mb-2 text-sm">
-            {errors.general || authError || "Login gagal. Silakan coba lagi."}
-          </div>
-        )}
-
         <Input
           id="email"
           name="email"
           type="email"
           label="Email"
-          placeholder="Enter your email"
+          placeholder="Masukkan email Anda"
           value={formData.email}
           onChange={handleChange}
           error={errors.email}
@@ -120,7 +142,7 @@ const Login = () => {
           name="password"
           type="password"
           label="Password"
-          placeholder="Enter your password"
+          placeholder="Masukkan password Anda"
           value={formData.password}
           onChange={handleChange}
           error={errors.password}
@@ -131,7 +153,7 @@ const Login = () => {
           <Checkbox
             id="rememberMe"
             name="rememberMe"
-            label="Remember me"
+            label="Ingat saya"
             checked={formData.rememberMe}
             onChange={handleChange}
           />
@@ -140,7 +162,7 @@ const Login = () => {
             to="/forgot-password"
             className="text-sm text-secondary hover:underline"
           >
-            Forgot password?
+            Lupa password?
           </Link>
         </div>
 
@@ -150,32 +172,32 @@ const Login = () => {
           fullWidth
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Logging in..." : "Login"}
+          {isSubmitting ? "Sedang masuk..." : "Masuk"}
         </Button>
       </form>
 
-      <Divider text="Or" className="my-4" />
+      <Divider text="Atau" className="my-4" />
 
       <GoogleButton />
 
       <div className="mt-4 text-center">
         <p className="text-text-light">
-          Don't have an account?{" "}
+          Belum punya akun?{" "}
           <Link to="/signup" className="text-secondary hover:underline">
-            Signup
+            Daftar
           </Link>
         </p>
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-500 border-opacity-30 flex justify-center space-x-4 text-xs text-text-light opacity-70">
         <Link to="/terms" className="hover:underline">
-          Terms & Conditions
+          Syarat & Ketentuan
         </Link>
         <Link to="/support" className="hover:underline">
-          Support
+          Bantuan
         </Link>
         <Link to="/customer-care" className="hover:underline">
-          Customer Care
+          Layanan Pelanggan
         </Link>
       </div>
     </AuthLayout>

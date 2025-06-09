@@ -23,7 +23,7 @@ function HintView({ isLoading, currentLetter, currentHint }) {
             />
           </div>
 
-          <div className="bg-blue-800/50 backdrop-blur-sm px-6 py-3 rounded-xl max-w-xs">
+          <div className=" backdrop-blur-sm px-6 py-3 rounded-xl max-w-xs">
             <p className="text-lg text-center">{currentHint.description}</p>
           </div>
         </>

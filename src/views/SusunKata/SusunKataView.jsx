@@ -6,7 +6,7 @@ import HintView from "../../views/HintView";
 import WordDisplayView from "./WordDisplayView";
 import ScoreView from "./ScoreView";
 import Button from "../../components/ui/Button";
-import { Home, LogOut, ArrowLeft, Award, Clock, X, Check } from "lucide-react";
+import { ArrowLeft, X, Check, Save } from "lucide-react";
 
 function SusunKataView({
   susunKataModel,
@@ -187,7 +187,7 @@ function SusunKataView({
         {/* Hint image (right) - HANYA UNTUK DESKTOP */}
         <div className="hidden md:block">
           {isTransitioningWord ? (
-            <div className="flex flex-col justify-center items-center bg-blue-700 rounded-xl h-full">
+            <div className="flex flex-col justify-center items-center rounded-xl h-full">
               <div className="flex flex-col items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-300 mb-4"></div>
                 <p>Memuat petunjuk...</p>
@@ -289,7 +289,7 @@ function SusunKataView({
                 className="flex flex-col items-center justify-center group relative hover:cursor-pointer"
                 onClick={handleEndSessionClick}
               >
-                <LogOut className="h-5 w-5 text-white mb-1" />
+                <Save className="h-5 w-5 text-white mb-1" />
                 <span className="text-xs text-center font-medium">Akhiri</span>
 
                 {/* Tooltip */}
@@ -338,7 +338,7 @@ function SusunKataView({
               title="Akhiri sesi dan simpan poin yang didapat"
             >
               <span>Akhiri Sesi</span>
-              <LogOut className="h-5 w-5" />
+              <Save className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -350,7 +350,7 @@ function SusunKataView({
           <div className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-xl max-w-md w-full p-5 shadow-2xl border border-purple-500/30 animate-fade-in">
             <div className="text-center mb-4">
               <div className="w-16 h-16 bg-purple-800/50 rounded-full mx-auto flex items-center justify-center mb-4">
-                <LogOut className="h-8 w-8 text-purple-300" />
+                <Save className="h-8 w-8 text-purple-300" />
               </div>
               <h3 className="text-xl font-bold mb-2">Konfirmasi</h3>
               <p className="text-gray-200">{confirmationMessage}</p>
