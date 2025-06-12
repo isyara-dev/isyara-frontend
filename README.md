@@ -8,6 +8,10 @@
 
 ISYARA adalah aplikasi web interaktif yang dirancang untuk membantu pengguna mempelajari Bahasa Isyarat Indonesia (BISINDO) melalui teknologi pengenalan gerakan tangan secara *real-time*. Proyek ini menggunakan React, Vite, dan Tailwind CSS v4 untuk frontend, serta mengintegrasikan MediaPipe dan TensorFlow.js untuk fitur intinya.
 
+## 🚀 Live Demo
+
+**Kunjungi Aplikasi ISYARA** : [isyara.netlify.app](https://isyara.netlify.app)
+
 ## Daftar Isi
 
 - [Fitur Utama](#fitur-utama)
@@ -83,7 +87,7 @@ isyara-frontend/
 ├── index.html                 # Template HTML utama
 ├── package.json               # Dependensi dan skrip proyek
 └── vite.config.js             # Konfigurasi Vite
-
+```
 ## Prasyarat
 
 -   Node.js (versi 18.x atau lebih tinggi)
