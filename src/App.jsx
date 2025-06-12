@@ -6,24 +6,27 @@ import {
   Navigate,
   useNavigate,
 } from "react-router-dom";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import DashboardPage from "./pages/dashboard/DashboardPage";
-import AuthCallback from "./pages/auth/AuthCallback";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import PracticePage from "./pages/belajar/PracticePage";
-import PeringkatPage from "./pages/peringkat/PeringkatPage";
-import ProfilePage from "./pages/pengaturan/ProfilePage";
-import SusunKataPage from "./pages/Tantangan/SusunKataPage";
-import VerifyEmail from "./pages/auth/VerifyEmail";
-import ResendVerification from "./pages/auth/ResendVerification";
-import EmailVerification from "./pages/auth/EmailVerification";
+import {
+  Login,
+  Register,
+  AuthCallback,
+  VerifyEmail,
+  ResendVerification,
+  EmailVerification,
+  ProtectedRoute,
+} from "./features/auth";
+import { DashboardPage } from "./features/dashboard";
+import {
+  BelajarPresenter,
+  SubmodulePresenter,
+  PracticePresenter,
+  PracticePage,
+} from "./features/belajar";
+import { PeringkatPage } from "./features/peringkat";
+import { ProfilePage } from "./features/profile";
+import { SusunKataPage } from "./features/tantangan";
 import { useAuth } from "./contexts/AuthContext";
 import { LearningProvider } from "./contexts/LearningContext";
-
-// Import presenters
-import BelajarPresenter from "./presenters/BelajarPresenter";
-import SubmodulePresenter from "./presenters/SubmodulePresenter";
 
 // Komponen untuk menangani logout
 const LogoutHandler = () => {
