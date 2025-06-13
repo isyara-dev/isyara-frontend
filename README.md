@@ -15,7 +15,7 @@ ISYARA adalah aplikasi web interaktif yang dirancang untuk membantu pengguna mem
 ## Daftar Isi
 
 - [Fitur Utama](#fitur-utama)
-- [Tumpukan Teknologi](#tumpukan-teknologi)
+- [Tech Stack](#tech-stack)
 - [Struktur Proyek](#struktur-proyek)
 - [Prasyarat](#prasyarat)
 - [Panduan Instalasi & Konfigurasi Lokal](#panduan-instalasi--konfigurasi-lokal)
@@ -34,7 +34,7 @@ ISYARA adalah aplikasi web interaktif yang dirancang untuk membantu pengguna mem
 -   👤 **Profil Pengguna**: Halaman di mana pengguna dapat melihat progres, skor, dan memperbarui informasi pribadi mereka.
 -   📱 **Desain Responsif**: Antarmuka yang dioptimalkan untuk pengalaman pengguna yang mulus di perangkat desktop maupun mobile.
 
-## Tumpukan Teknologi
+## Tech Stack
 
 -   **Frontend**: React 19, Vite
 -   **Styling**: Tailwind CSS v4 dengan variabel `@theme` kustom
@@ -114,7 +114,7 @@ Untuk menjalankan proyek ini di lingkungan lokal Anda, ikuti langkah-langkah ber
 
     ```env
     # URL proyek Supabase Anda
-    VITE_SUPABASE_URL="[https://your-supabase-project.supabase.co](https://your-supabase-project.supabase.co)"
+    VITE_SUPABASE_URL="https://your-supabase-project.supabase.co"
 
     # Kunci "anon" publik Supabase Anda
     VITE_SUPABASE_ANON_KEY="your-supabase-anon-key"
@@ -171,5 +171,3 @@ Dalam direktori proyek, Anda dapat menjalankan skrip berikut:
 -   `npm run preview`: Menjalankan server lokal untuk meninjau hasil *build* produksi.
 
 ---
-
-Dengan mengikuti panduan ini, Anda seharusnya dapat mereplikasi dan menjalankan proyek ISYARA di lingkungan lokal Anda. Selamat mencoba!
