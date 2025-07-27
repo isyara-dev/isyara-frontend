@@ -110,7 +110,7 @@ function PracticeView({
       <main className="grid grid-cols-1 md:grid-cols-2 p-4 md:p-8 gap-4 md:gap-8 flex-1 overflow-hidden relative">
         {/* Camera (left) */}
         <div
-          className={`flex justify-center items-center bg-purple-700 rounded-xl w-full aspect-[4/3] self-center mx-auto max-w-full relative transition-all duration-200
+          className={`flex justify-center items-center bg-purple-700 rounded-xl h-full relative transition-all duration-200
             ${incorrectGesture ? "border-4 border-red-500" : ""}
             ${correctGesture ? "border-4 border-green-500" : ""}`}
         >
