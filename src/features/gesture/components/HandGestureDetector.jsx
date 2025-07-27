@@ -16,12 +16,17 @@ const HandGestureDetector = memo(
     const [confidence, setConfidence] = useState(null);
     const [debugInfo, setDebugInfo] = useState({});
 
-    // Sync states - FIXED: Add more granular control
+    // Sync states
     const canvasSyncedRef = useRef(false);
     const videoMetadataReadyRef = useRef(false);
     const syncAttemptCountRef = useRef(0);
     const maxSyncAttempts = 10;
-    const initialSyncDoneRef = useRef(false); // NEW: Prevent unnecessary re-syncs
+
+    // Resize handling refs
+    const lastContainerSizeRef = useRef({ width: 0, height: 0 });
+    const resizeTimeoutRef = useRef(null);
+    const RESIZE_THRESHOLD = 20; // Minimum change in pixels to trigger resize
+    const RESIZE_DEBOUNCE = 300; // Debounce time in ms
 
     const isInitializedRef = useRef(false);
     const lastDetectionTimeRef = useRef(0);
@@ -37,7 +42,7 @@ const HandGestureDetector = memo(
     const CONFIDENCE_THRESHOLD = 0.7;
     const DETECTION_COOLDOWN = 1000;
 
-    // FIXED: Only sync once initially, then only on container resize
+    // Advanced canvas-video sync function (UPDATED for CSS-based cropping)
     const syncCanvasWithVideoStream = useCallback(() => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -46,11 +51,6 @@ const HandGestureDetector = memo(
       if (!video || !canvas || !container) {
         console.warn("syncCanvasWithVideoStream: Missing refs");
         return false;
-      }
-
-      // FIXED: If initial sync is done and canvas is already synced, don't re-sync
-      if (initialSyncDoneRef.current && canvasSyncedRef.current) {
-        return true;
       }
 
       // Check if we've exceeded max attempts
@@ -90,7 +90,7 @@ const HandGestureDetector = memo(
           `Video metadata not ready (attempt ${syncAttemptCountRef.current}):`,
           {
             width: actualVideoWidth,
-            height: actualVideoHeight,
+            height: actualVideoWidth,
             readyState: video.readyState,
           }
         );
@@ -110,10 +110,12 @@ const HandGestureDetector = memo(
         return false;
       }
 
-      // Canvas maintains video aspect ratio - CSS handles cropping
+      // OPSI C: Canvas maintains video aspect ratio
+      // CSS will handle the cropping via object-fit: cover
       const videoAspectRatio = actualVideoWidth / actualVideoHeight;
 
       // Set canvas to maintain video aspect ratio for accurate coordinates
+      // Base size should be large enough for good quality but not excessive
       const baseCanvasWidth = Math.max(actualVideoWidth, 640);
       const baseCanvasHeight = baseCanvasWidth / videoAspectRatio;
 
@@ -154,13 +156,13 @@ const HandGestureDetector = memo(
 
       canvasSyncedRef.current = true;
       videoMetadataReadyRef.current = true;
-      initialSyncDoneRef.current = true; // FIXED: Mark initial sync as done
 
-      console.log("✅ Canvas-Video sync successful:", {
+      console.log("✅ Canvas-Video sync successful (CSS-based cropping):", {
         videoSize: `${actualVideoWidth}x${actualVideoHeight}`,
         videoAspectRatio: videoAspectRatio.toFixed(3),
         containerSize: `${container.clientWidth}x${container.clientHeight}`,
         canvasInternalSize: `${canvas.width}x${canvas.height}`,
+        cssHandlesCropping: true,
         attempt: syncAttemptCountRef.current,
       });
 
@@ -187,12 +189,11 @@ const HandGestureDetector = memo(
 
       console.warn("Using fallback canvas sizing");
 
-      // Use standard video dimensions as fallback
+      // Use standard video dimensions as fallback (maintains aspect ratio)
       canvas.width = 640;
       canvas.height = 480;
 
-      canvasSyncedRef.current = true;
-      initialSyncDoneRef.current = true; // FIXED: Mark as done
+      canvasSyncedRef.current = true; // Mark as synced to prevent infinite retry
 
       if (showDebugInfo) {
         setDebugInfo((prev) => ({
@@ -207,36 +208,130 @@ const HandGestureDetector = memo(
       return true;
     }, [showDebugInfo]);
 
-    // FIXED: Only handle container resize, not every frame
-    useEffect(() => {
-      if (!containerRef.current) return;
+    // Smart resize handler with threshold and debouncing
+    const handleContainerResize = useCallback(
+      (entries) => {
+        if (!videoMetadataReadyRef.current || !containerRef.current) return;
 
-      const resizeObserver = new ResizeObserver(() => {
-        // FIXED: Only re-sync on significant size changes
-        if (videoMetadataReadyRef.current && initialSyncDoneRef.current) {
-          console.log("Container resized, re-syncing canvas");
-          canvasSyncedRef.current = false;
-          syncAttemptCountRef.current = 0;
-          syncCanvasWithVideoStream();
-        }
-      });
+        const container = containerRef.current;
+        const currentWidth = container.clientWidth;
+        const currentHeight = container.clientHeight;
 
-      resizeObserver.observe(containerRef.current);
+        const lastSize = lastContainerSizeRef.current;
 
-      // Handle orientation change
-      const handleOrientationChange = () => {
-        if (videoMetadataReadyRef.current && initialSyncDoneRef.current) {
-          setTimeout(() => {
-            console.log("Orientation changed, re-syncing canvas");
+        // Calculate the change in size
+        const widthChange = Math.abs(currentWidth - lastSize.width);
+        const heightChange = Math.abs(currentHeight - lastSize.height);
+
+        // Only trigger resize if change is significant (above threshold)
+        if (widthChange > RESIZE_THRESHOLD || heightChange > RESIZE_THRESHOLD) {
+          console.log(`Significant container resize detected:`, {
+            from: `${lastSize.width}x${lastSize.height}`,
+            to: `${currentWidth}x${currentHeight}`,
+            change: `${widthChange}x${heightChange}`,
+            threshold: RESIZE_THRESHOLD,
+          });
+
+          // Update last size
+          lastContainerSizeRef.current = {
+            width: currentWidth,
+            height: currentHeight,
+          };
+
+          // Clear existing timeout
+          if (resizeTimeoutRef.current) {
+            clearTimeout(resizeTimeoutRef.current);
+          }
+
+          // Debounce the resize handling
+          resizeTimeoutRef.current = setTimeout(() => {
+            console.log("Executing debounced resize sync");
+            // Reset sync state for re-sync
             canvasSyncedRef.current = false;
             syncAttemptCountRef.current = 0;
             syncCanvasWithVideoStream();
-          }, 100);
+          }, RESIZE_DEBOUNCE);
+        } else {
+          console.log(`Container resize ignored (below threshold):`, {
+            change: `${widthChange}x${heightChange}`,
+            threshold: RESIZE_THRESHOLD,
+          });
+        }
+      },
+      [syncCanvasWithVideoStream]
+    );
+
+    // Handle container resize - re-sync canvas with smart threshold
+    useEffect(() => {
+      if (!containerRef.current) return;
+
+      const container = containerRef.current;
+
+      // Initialize last size
+      lastContainerSizeRef.current = {
+        width: container.clientWidth,
+        height: container.clientHeight,
+      };
+
+      const resizeObserver = new ResizeObserver(handleContainerResize);
+      resizeObserver.observe(container);
+
+      // Handle orientation change with debouncing
+      const handleOrientationChange = () => {
+        if (videoMetadataReadyRef.current) {
+          console.log("Orientation change detected");
+
+          // Clear existing timeout
+          if (resizeTimeoutRef.current) {
+            clearTimeout(resizeTimeoutRef.current);
+          }
+
+          resizeTimeoutRef.current = setTimeout(() => {
+            console.log("Executing orientation change sync");
+            canvasSyncedRef.current = false;
+            syncAttemptCountRef.current = 0;
+            syncCanvasWithVideoStream();
+          }, RESIZE_DEBOUNCE);
+        }
+      };
+
+      // Handle window resize with debouncing (for cases where ResizeObserver might not catch)
+      const handleWindowResize = () => {
+        if (videoMetadataReadyRef.current) {
+          console.log("Window resize detected");
+
+          // Clear existing timeout
+          if (resizeTimeoutRef.current) {
+            clearTimeout(resizeTimeoutRef.current);
+          }
+
+          resizeTimeoutRef.current = setTimeout(() => {
+            const currentWidth = container.clientWidth;
+            const currentHeight = container.clientHeight;
+            const lastSize = lastContainerSizeRef.current;
+
+            const widthChange = Math.abs(currentWidth - lastSize.width);
+            const heightChange = Math.abs(currentHeight - lastSize.height);
+
+            if (
+              widthChange > RESIZE_THRESHOLD ||
+              heightChange > RESIZE_THRESHOLD
+            ) {
+              console.log("Executing window resize sync");
+              lastContainerSizeRef.current = {
+                width: currentWidth,
+                height: currentHeight,
+              };
+              canvasSyncedRef.current = false;
+              syncAttemptCountRef.current = 0;
+              syncCanvasWithVideoStream();
+            }
+          }, RESIZE_DEBOUNCE);
         }
       };
 
       window.addEventListener("orientationchange", handleOrientationChange);
-      window.addEventListener("resize", handleOrientationChange);
+      window.addEventListener("resize", handleWindowResize);
 
       return () => {
         resizeObserver.disconnect();
@@ -244,16 +339,21 @@ const HandGestureDetector = memo(
           "orientationchange",
           handleOrientationChange
         );
-        window.removeEventListener("resize", handleOrientationChange);
+        window.removeEventListener("resize", handleWindowResize);
+
+        // Clear timeout on cleanup
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current);
+        }
       };
-    }, [syncCanvasWithVideoStream]);
+    }, [handleContainerResize, syncCanvasWithVideoStream]);
 
     // Initialize once on mount
     useEffect(() => {
       if (isInitializedRef.current) return;
 
       let isMounted = true;
-      console.log("Initializing HandGestureDetector");
+      console.log("Initializing HandGestureDetector with CSS-based cropping");
 
       const loadResources = async () => {
         if (!isMounted) return;
@@ -283,21 +383,19 @@ const HandGestureDetector = memo(
           if (!videoRef.current) return;
 
           const video = videoRef.current;
-          video.width = 640;
+          video.width = 640; // Initial size for MediaPipe
           video.height = 480;
 
-          // FIXED: Only sync once when metadata loads, not repeatedly
+          // Set up video event listeners for metadata
           video.addEventListener("loadedmetadata", () => {
             console.log("📹 Video metadata loaded");
             videoMetadataReadyRef.current = true;
-            if (!initialSyncDoneRef.current) {
-              syncCanvasWithVideoStream();
-            }
+            syncCanvasWithVideoStream();
           });
 
           video.addEventListener("canplay", () => {
             console.log("📹 Video can play");
-            if (!initialSyncDoneRef.current && !canvasSyncedRef.current) {
+            if (!canvasSyncedRef.current) {
               syncCanvasWithVideoStream();
             }
           });
@@ -327,17 +425,17 @@ const HandGestureDetector = memo(
             const canvas = canvasRef.current;
             const video = videoRef.current;
 
-            // FIXED: Only skip frame if initial sync isn't done yet
-            if (!initialSyncDoneRef.current || !canvasSyncedRef.current) {
-              // Try to sync only if not done yet
-              if (!initialSyncDoneRef.current && video.readyState >= 2) {
-                syncCanvasWithVideoStream();
-              }
-              return;
+            // Ensure canvas is synced before processing
+            if (!canvasSyncedRef.current) {
+              syncCanvasWithVideoStream();
+              return; // Skip this frame
             }
 
-            // Clear canvas and draw video frame
+            // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw video frame at canvas native size (no scaling at canvas level)
+            // CSS will handle the display scaling and cropping
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
             // Check if hand is visible
@@ -431,8 +529,8 @@ const HandGestureDetector = memo(
           // 7. Start camera
           cameraRef.current = new Camera(videoRef.current, {
             onFrame: async () => {
-              // FIXED: Only try to sync on first few frames if not done yet
-              if (!initialSyncDoneRef.current && video.readyState >= 2) {
+              // Try to sync canvas on first few frames if not synced yet
+              if (!canvasSyncedRef.current && video.readyState >= 2) {
                 syncCanvasWithVideoStream();
               }
 
@@ -462,7 +560,7 @@ const HandGestureDetector = memo(
         }
       };
 
-      // Helper functions
+      // Helper functions (unchanged from original)
       function normalizeLandmarks(landmarks, wrist) {
         return landmarks.map((lm) => [
           lm.x - wrist.x,
@@ -574,6 +672,11 @@ const HandGestureDetector = memo(
         console.log("HandGestureDetector: UNMOUNTING! Shutting down camera.");
         isMounted = false;
 
+        // Clear any pending resize timeout
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current);
+        }
+
         if (cameraRef.current) {
           try {
             cameraRef.current.stop();
@@ -590,7 +693,11 @@ const HandGestureDetector = memo(
           }
         }
       };
-    }, [syncCanvasWithVideoStream, useFallbackCanvasSize]);
+    }, [
+      syncCanvasWithVideoStream,
+      useFallbackCanvasSize,
+      handleContainerResize,
+    ]);
 
     function isFullHandVisible(handLandmarks) {
       if (!handLandmarks || handLandmarks.length === 0) return false;
@@ -643,6 +750,24 @@ const HandGestureDetector = memo(
         />
 
         <canvas ref={canvasRef} className="responsive-canvas" />
+
+        {/* {showDebugInfo && (
+          <div className="absolute bottom-4 left-4 bg-black/70 px-3 py-2 rounded text-xs text-white font-mono z-20">
+            <div>
+              Canvas: {debugInfo.canvasWidth}×{debugInfo.canvasHeight}
+            </div>
+            <div>
+              Video: {debugInfo.videoWidth}×{debugInfo.videoHeight}
+            </div>
+            <div>AR: {debugInfo.videoAspectRatio}</div>
+            <div>Mode: {debugInfo.cssMode ? "CSS" : "JS"}</div>
+            <div>Attempt: {debugInfo.attempt}</div>
+            <div>
+              Status:{" "}
+              {debugInfo.synced ? "✅" : debugInfo.fallback ? "⚠️" : "⏳"}
+            </div>
+          </div>
+        )} */}
 
         {/* Add required CSS styles */}
         <style jsx>{`
