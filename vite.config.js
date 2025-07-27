@@ -11,5 +11,8 @@ export default defineConfig(({ mode }) => {
       react(),
       mode === "production" && removeConsole(),
     ].filter(Boolean),
+    server: {
+      host: true,
+    },
   };
 });

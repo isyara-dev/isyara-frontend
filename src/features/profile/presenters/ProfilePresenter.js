@@ -76,7 +76,7 @@ class ProfilePresenter {
           NotificationService.show(
             "Mengunggah foto profil...",
             "info",
-            0, // Durasi 0 berarti tidak akan otomatis hilang
+            1000,
             "profile-upload"
           );
           this.view.setUploadingImage(true);

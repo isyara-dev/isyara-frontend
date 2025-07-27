@@ -356,6 +356,11 @@ class SusunKataPresenter {
     if (this.animationTimeoutRef) {
       clearTimeout(this.animationTimeoutRef);
     }
+
+    // Reset state
+    this.progressModel.resetGestureDetection();
+    this.progressModel.setGameState(this.progressModel.GAME_STATES.IDLE);
+    this.updateView();
   }
 }
 
