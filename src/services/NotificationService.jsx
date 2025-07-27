@@ -102,13 +102,26 @@ class NotificationService {
     }
   }
 
-  show(message, type = "info", duration = 5000) {
+  show(message, type = "info", duration = 3000, category = null) {
     const id = Date.now().toString();
+
+    // Jika ada kategori, hapus notifikasi lama dengan kategori yang sama
+    if (category) {
+      const existingIndex = this.notifications.findIndex(
+        (n) => n.category === category
+      );
+      if (existingIndex !== -1) {
+        // Hapus notifikasi lama
+        this.notifications.splice(existingIndex, 1);
+      }
+    }
+
     const notification = {
       id,
       message,
       type,
       visible: true,
+      category, // Tambahkan kategori ke objek notifikasi
     };
 
     this.notifications.push(notification);

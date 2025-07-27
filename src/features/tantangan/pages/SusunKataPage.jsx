@@ -41,6 +41,7 @@ function SusunKataPage() {
 
     // Cleanup
     return () => {
+      console.log("SusunKataPage: UNMOUNTING, cleanup should run now!");
       presenterRef.current.cleanup();
     };
   }, [susunKataModel, progressModel]);
@@ -61,7 +62,7 @@ function SusunKataPage() {
   }, []);
 
   // Handler untuk finish button
-  const handleFinishClick = useCallback(() => {
+  const handleFinishClick = useCallback(async () => {
     if (presenterRef.current && susunKataModel.points > 0) {
       // Submit completed words before navigating away
       presenterRef.current.submitCompletedWords();
