@@ -19,6 +19,12 @@ const HandGestureDetector = memo(
     const MAX_NO_HAND_FRAMES = 5; // Reset after this many frames without a hand
     const wasHandVisibleRef = useRef(false);
 
+    // State untuk menyimpan dimensi canvas yang akan disesuaikan dengan video stream
+    const [canvasDimensions, setCanvasDimensions] = useState({
+      width: 640,
+      height: 480,
+    });
+
     // Update activeRef when active prop changes
     useEffect(() => {
       activeRef.current = active;
@@ -28,6 +34,23 @@ const HandGestureDetector = memo(
     const labelMap = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
     const CONFIDENCE_THRESHOLD = 0.7;
     const DETECTION_COOLDOWN = 1000; // 1 second cooldown between detections
+
+    // Function untuk menentukan canvas dimensions berdasarkan video stream dimensions
+    const calculateCanvasDimensions = useCallback((videoWidth, videoHeight) => {
+      if (!videoWidth || !videoHeight) {
+        return { width: 640, height: 480 }; // default landscape
+      }
+
+      const videoAspectRatio = videoWidth / videoHeight;
+
+      if (videoAspectRatio < 1) {
+        // Portrait video (tinggi > lebar) - untuk mobile portrait
+        return { width: 480, height: 640 };
+      } else {
+        // Landscape video (lebar >= tinggi) - untuk desktop dan mobile landscape
+        return { width: 640, height: 480 };
+      }
+    }, []);
 
     // Initialize once on mount
     useEffect(() => {
@@ -60,16 +83,49 @@ const HandGestureDetector = memo(
             );
           }
 
-          // 3. Initialize video element
+          // === PERUBAHAN 3: UPDATE VIDEO ELEMENT INITIALIZATION ===
+          // 3. Initialize video element dengan handler untuk metadata
           if (!videoRef.current) return;
+
+          // Setup video dimensions update handler untuk mendeteksi dimensi video stream
+          videoRef.current.addEventListener("loadedmetadata", () => {
+            const { videoWidth, videoHeight } = videoRef.current;
+            console.log(
+              `Video stream dimensions: ${videoWidth}x${videoHeight}`
+            );
+
+            // Calculate new canvas dimensions berdasarkan video stream
+            const newDimensions = calculateCanvasDimensions(
+              videoWidth,
+              videoHeight
+            );
+            console.log(
+              `Setting canvas dimensions to: ${newDimensions.width}x${newDimensions.height}`
+            );
+            setCanvasDimensions(newDimensions);
+
+            // Update canvas internal dimensions secara langsung
+            if (canvasRef.current) {
+              canvasRef.current.width = newDimensions.width;
+              canvasRef.current.height = newDimensions.height;
+              console.log(
+                `Canvas internal dimensions updated: ${canvasRef.current.width}x${canvasRef.current.height}`
+              );
+            }
+          });
+
+          // Set initial video size (akan diupdate otomatis setelah metadata loaded)
           videoRef.current.width = 640;
           videoRef.current.height = 480;
+          // === AKHIR PERUBAHAN 3 ===
 
-          // 4. Initialize canvas
+          // 4. Initialize canvas dengan dimensi dari state
           if (!canvasRef.current) return;
           const ctx = canvasRef.current.getContext("2d");
-          canvasRef.current.width = 640;
-          canvasRef.current.height = 480;
+          // Canvas dimensions akan diset ulang setelah video metadata loaded
+          // Set default dimensions dari state dulu
+          canvasRef.current.width = canvasDimensions.width;
+          canvasRef.current.height = canvasDimensions.height;
 
           // 5. Initialize MediaPipe Hands
           handsRef.current = new Hands({
@@ -89,18 +145,27 @@ const HandGestureDetector = memo(
           handsRef.current.onResults((results) => {
             if (!canvasRef.current || !isMounted) return;
 
+            // Clear canvas dengan dimensi yang benar
             ctx.clearRect(
               0,
               0,
               canvasRef.current.width,
               canvasRef.current.height
             );
+
+            // Draw video ke canvas dengan proper mapping dari source ke destination
+            // Source: video dimensions (videoWidth x videoHeight)
+            // Destination: canvas dimensions (canvas.width x canvas.height)
             ctx.drawImage(
               videoRef.current,
               0,
               0,
+              videoRef.current.videoWidth || canvasRef.current.width,
+              videoRef.current.videoHeight || canvasRef.current.height, // source rectangle
+              0,
+              0,
               canvasRef.current.width,
-              canvasRef.current.height
+              canvasRef.current.height // destination rectangle
             );
 
             // Check if hand is visible - simplified check for any landmarks
@@ -429,21 +494,15 @@ const HandGestureDetector = memo(
           style={{ display: "none" }}
         />
 
+        {/* Canvas dengan style yang diupdate untuk handle responsive dimensions */}
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full object-cover rounded-xl"
+          className="absolute top-0 left-0 w-full h-full object-cover rounded-xl" // Ganti object-cover menjadi object-contain
           style={{
-            transform: "scale(-1, 1)", // Mirror the canvas
-            aspectRatio: "4/3", // Tetapkan aspek rasio
-            objectFit: "cover", // Pastikan gambar menutupi area dengan benar
+            transform: "scale(-1, 1)", // Mirror tetap untuk efek cermin
+            objectFit: "cover",
           }}
         />
-
-        {/* <div className="absolute top-4 left-4 bg-black/50 px-3 py-1 rounded">
-          {detectedGesture
-            ? `Detected: ${detectedGesture} (${(confidence * 100).toFixed(1)}%)`
-            : "No gesture detected"}
-        </div> */}
       </div>
     );
   },
