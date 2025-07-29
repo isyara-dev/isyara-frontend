@@ -32,6 +32,12 @@ const HandGestureDetector = memo(
     const lastDetectionTimeRef = useRef(0);
     const wasHandVisibleRef = useRef(false);
 
+    // State untuk menyimpan dimensi canvas yang akan disesuaikan dengan video stream
+    const [canvasDimensions, setCanvasDimensions] = useState({
+      width: 640,
+      height: 480,
+    });
+
     // Update activeRef when active prop changes
     useEffect(() => {
       activeRef.current = active;
@@ -40,313 +46,24 @@ const HandGestureDetector = memo(
     // Gesture classes mapping
     const labelMap = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
     const CONFIDENCE_THRESHOLD = 0.7;
-    const DETECTION_COOLDOWN = 1000;
+    const DETECTION_COOLDOWN = 1000; // 1 second cooldown between detections
 
-    // Advanced canvas-video sync function (UPDATED for CSS-based cropping)
-    const syncCanvasWithVideoStream = useCallback(() => {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
-
-      if (!video || !canvas || !container) {
-        console.warn("syncCanvasWithVideoStream: Missing refs");
-        return false;
+    // Function untuk menentukan canvas dimensions berdasarkan video stream dimensions
+    const calculateCanvasDimensions = useCallback((videoWidth, videoHeight) => {
+      if (!videoWidth || !videoHeight) {
+        return { width: 640, height: 480 }; // default landscape
       }
 
-      // Check if we've exceeded max attempts
-      if (syncAttemptCountRef.current >= maxSyncAttempts) {
-        console.warn("Max sync attempts reached, using fallback");
-        return useFallbackCanvasSize();
+      const videoAspectRatio = videoWidth / videoHeight;
+
+      if (videoAspectRatio < 1) {
+        // Portrait video (tinggi > lebar) - untuk mobile portrait
+        return { width: 480, height: 640 };
+      } else {
+        // Landscape video (lebar >= tinggi) - untuk desktop dan mobile landscape
+        return { width: 640, height: 480 };
       }
-
-      syncAttemptCountRef.current++;
-
-      // Get actual video stream dimensions
-      const actualVideoWidth = video.videoWidth;
-      const actualVideoHeight = video.videoHeight;
-
-      // Debug info update
-      const currentDebugInfo = {
-        attempt: syncAttemptCountRef.current,
-        videoReady: video.readyState,
-        videoWidth: actualVideoWidth,
-        videoHeight: actualVideoHeight,
-        containerWidth: container.clientWidth,
-        containerHeight: container.clientHeight,
-      };
-
-      if (showDebugInfo) {
-        setDebugInfo(currentDebugInfo);
-      }
-
-      // Check if video metadata is available
-      if (
-        !actualVideoWidth ||
-        !actualVideoHeight ||
-        actualVideoWidth === 0 ||
-        actualVideoHeight === 0
-      ) {
-        console.warn(
-          `Video metadata not ready (attempt ${syncAttemptCountRef.current}):`,
-          {
-            width: actualVideoWidth,
-            height: actualVideoWidth,
-            readyState: video.readyState,
-          }
-        );
-
-        // Retry after a delay if video is loading
-        if (
-          video.readyState < 2 &&
-          syncAttemptCountRef.current < maxSyncAttempts
-        ) {
-          setTimeout(() => {
-            syncCanvasWithVideoStream();
-          }, 100);
-        } else {
-          // Use fallback if video not ready after multiple attempts
-          return useFallbackCanvasSize();
-        }
-        return false;
-      }
-
-      // OPSI C: Canvas maintains video aspect ratio
-      // CSS will handle the cropping via object-fit: cover
-      const videoAspectRatio = actualVideoWidth / actualVideoHeight;
-
-      // Set canvas to maintain video aspect ratio for accurate coordinates
-      // Base size should be large enough for good quality but not excessive
-      const baseCanvasWidth = Math.max(actualVideoWidth, 640);
-      const baseCanvasHeight = baseCanvasWidth / videoAspectRatio;
-
-      // Ensure minimum dimensions for model processing
-      const minWidth = 320;
-      const minHeight = 240;
-
-      let canvasWidth = baseCanvasWidth;
-      let canvasHeight = baseCanvasHeight;
-
-      if (canvasWidth < minWidth || canvasHeight < minHeight) {
-        console.warn("Calculated canvas size too small, adjusting");
-        const scale = Math.max(
-          minWidth / canvasWidth,
-          minHeight / canvasHeight
-        );
-        canvasWidth *= scale;
-        canvasHeight *= scale;
-      }
-
-      // Final safety check
-      if (
-        canvasWidth <= 0 ||
-        canvasHeight <= 0 ||
-        !isFinite(canvasWidth) ||
-        !isFinite(canvasHeight)
-      ) {
-        console.error("Invalid canvas dimensions calculated:", {
-          canvasWidth,
-          canvasHeight,
-        });
-        return useFallbackCanvasSize();
-      }
-
-      // Apply calculated dimensions (maintains video aspect ratio)
-      canvas.width = Math.round(canvasWidth);
-      canvas.height = Math.round(canvasHeight);
-
-      canvasSyncedRef.current = true;
-      videoMetadataReadyRef.current = true;
-
-      console.log("✅ Canvas-Video sync successful (CSS-based cropping):", {
-        videoSize: `${actualVideoWidth}x${actualVideoHeight}`,
-        videoAspectRatio: videoAspectRatio.toFixed(3),
-        containerSize: `${container.clientWidth}x${container.clientHeight}`,
-        canvasInternalSize: `${canvas.width}x${canvas.height}`,
-        cssHandlesCropping: true,
-        attempt: syncAttemptCountRef.current,
-      });
-
-      if (showDebugInfo) {
-        setDebugInfo((prev) => ({
-          ...prev,
-          synced: true,
-          videoAspectRatio: videoAspectRatio.toFixed(3),
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-          cssMode: true,
-        }));
-      }
-
-      return true;
-    }, [showDebugInfo]);
-
-    // Fallback function for when video metadata fails
-    const useFallbackCanvasSize = useCallback(() => {
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
-
-      if (!canvas || !container) return false;
-
-      console.warn("Using fallback canvas sizing");
-
-      // Use standard video dimensions as fallback (maintains aspect ratio)
-      canvas.width = 640;
-      canvas.height = 480;
-
-      canvasSyncedRef.current = true; // Mark as synced to prevent infinite retry
-
-      if (showDebugInfo) {
-        setDebugInfo((prev) => ({
-          ...prev,
-          fallback: true,
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-          cssMode: true,
-        }));
-      }
-
-      return true;
-    }, [showDebugInfo]);
-
-    // Smart resize handler with threshold and debouncing
-    const handleContainerResize = useCallback(
-      (entries) => {
-        if (!videoMetadataReadyRef.current || !containerRef.current) return;
-
-        const container = containerRef.current;
-        const currentWidth = container.clientWidth;
-        const currentHeight = container.clientHeight;
-
-        const lastSize = lastContainerSizeRef.current;
-
-        // Calculate the change in size
-        const widthChange = Math.abs(currentWidth - lastSize.width);
-        const heightChange = Math.abs(currentHeight - lastSize.height);
-
-        // Only trigger resize if change is significant (above threshold)
-        if (widthChange > RESIZE_THRESHOLD || heightChange > RESIZE_THRESHOLD) {
-          console.log(`Significant container resize detected:`, {
-            from: `${lastSize.width}x${lastSize.height}`,
-            to: `${currentWidth}x${currentHeight}`,
-            change: `${widthChange}x${heightChange}`,
-            threshold: RESIZE_THRESHOLD,
-          });
-
-          // Update last size
-          lastContainerSizeRef.current = {
-            width: currentWidth,
-            height: currentHeight,
-          };
-
-          // Clear existing timeout
-          if (resizeTimeoutRef.current) {
-            clearTimeout(resizeTimeoutRef.current);
-          }
-
-          // Debounce the resize handling
-          resizeTimeoutRef.current = setTimeout(() => {
-            console.log("Executing debounced resize sync");
-            // Reset sync state for re-sync
-            canvasSyncedRef.current = false;
-            syncAttemptCountRef.current = 0;
-            syncCanvasWithVideoStream();
-          }, RESIZE_DEBOUNCE);
-        } else {
-          console.log(`Container resize ignored (below threshold):`, {
-            change: `${widthChange}x${heightChange}`,
-            threshold: RESIZE_THRESHOLD,
-          });
-        }
-      },
-      [syncCanvasWithVideoStream]
-    );
-
-    // Handle container resize - re-sync canvas with smart threshold
-    useEffect(() => {
-      if (!containerRef.current) return;
-
-      const container = containerRef.current;
-
-      // Initialize last size
-      lastContainerSizeRef.current = {
-        width: container.clientWidth,
-        height: container.clientHeight,
-      };
-
-      const resizeObserver = new ResizeObserver(handleContainerResize);
-      resizeObserver.observe(container);
-
-      // Handle orientation change with debouncing
-      const handleOrientationChange = () => {
-        if (videoMetadataReadyRef.current) {
-          console.log("Orientation change detected");
-
-          // Clear existing timeout
-          if (resizeTimeoutRef.current) {
-            clearTimeout(resizeTimeoutRef.current);
-          }
-
-          resizeTimeoutRef.current = setTimeout(() => {
-            console.log("Executing orientation change sync");
-            canvasSyncedRef.current = false;
-            syncAttemptCountRef.current = 0;
-            syncCanvasWithVideoStream();
-          }, RESIZE_DEBOUNCE);
-        }
-      };
-
-      // Handle window resize with debouncing (for cases where ResizeObserver might not catch)
-      const handleWindowResize = () => {
-        if (videoMetadataReadyRef.current) {
-          console.log("Window resize detected");
-
-          // Clear existing timeout
-          if (resizeTimeoutRef.current) {
-            clearTimeout(resizeTimeoutRef.current);
-          }
-
-          resizeTimeoutRef.current = setTimeout(() => {
-            const currentWidth = container.clientWidth;
-            const currentHeight = container.clientHeight;
-            const lastSize = lastContainerSizeRef.current;
-
-            const widthChange = Math.abs(currentWidth - lastSize.width);
-            const heightChange = Math.abs(currentHeight - lastSize.height);
-
-            if (
-              widthChange > RESIZE_THRESHOLD ||
-              heightChange > RESIZE_THRESHOLD
-            ) {
-              console.log("Executing window resize sync");
-              lastContainerSizeRef.current = {
-                width: currentWidth,
-                height: currentHeight,
-              };
-              canvasSyncedRef.current = false;
-              syncAttemptCountRef.current = 0;
-              syncCanvasWithVideoStream();
-            }
-          }, RESIZE_DEBOUNCE);
-        }
-      };
-
-      window.addEventListener("orientationchange", handleOrientationChange);
-      window.addEventListener("resize", handleWindowResize);
-
-      return () => {
-        resizeObserver.disconnect();
-        window.removeEventListener(
-          "orientationchange",
-          handleOrientationChange
-        );
-        window.removeEventListener("resize", handleWindowResize);
-
-        // Clear timeout on cleanup
-        if (resizeTimeoutRef.current) {
-          clearTimeout(resizeTimeoutRef.current);
-        }
-      };
-    }, [handleContainerResize, syncCanvasWithVideoStream]);
+    }, []);
 
     // Initialize once on mount
     useEffect(() => {
@@ -379,30 +96,49 @@ const HandGestureDetector = memo(
             );
           }
 
-          // 3. Initialize video element with event listeners
+          // === PERUBAHAN 3: UPDATE VIDEO ELEMENT INITIALIZATION ===
+          // 3. Initialize video element dengan handler untuk metadata
           if (!videoRef.current) return;
 
-          const video = videoRef.current;
-          video.width = 640; // Initial size for MediaPipe
-          video.height = 480;
+          // Setup video dimensions update handler untuk mendeteksi dimensi video stream
+          videoRef.current.addEventListener("loadedmetadata", () => {
+            const { videoWidth, videoHeight } = videoRef.current;
+            console.log(
+              `Video stream dimensions: ${videoWidth}x${videoHeight}`
+            );
 
-          // Set up video event listeners for metadata
-          video.addEventListener("loadedmetadata", () => {
-            console.log("📹 Video metadata loaded");
-            videoMetadataReadyRef.current = true;
-            syncCanvasWithVideoStream();
-          });
+            // Calculate new canvas dimensions berdasarkan video stream
+            const newDimensions = calculateCanvasDimensions(
+              videoWidth,
+              videoHeight
+            );
+            console.log(
+              `Setting canvas dimensions to: ${newDimensions.width}x${newDimensions.height}`
+            );
+            setCanvasDimensions(newDimensions);
 
-          video.addEventListener("canplay", () => {
-            console.log("📹 Video can play");
-            if (!canvasSyncedRef.current) {
-              syncCanvasWithVideoStream();
+            // Update canvas internal dimensions secara langsung
+            if (canvasRef.current) {
+              canvasRef.current.width = newDimensions.width;
+              canvasRef.current.height = newDimensions.height;
+              console.log(
+                `Canvas internal dimensions updated: ${canvasRef.current.width}x${canvasRef.current.height}`
+              );
             }
           });
 
-          // 4. Initialize canvas
+          // Set initial video size (akan diupdate otomatis setelah metadata loaded)
+          videoRef.current.width = 640;
+          videoRef.current.height = 480;
+          // === AKHIR PERUBAHAN 3 ===
+
+          // 4. Initialize canvas dengan dimensi dari state
           if (!canvasRef.current) return;
           const ctx = canvasRef.current.getContext("2d");
+          // Canvas dimensions akan diset ulang setelah video metadata loaded
+          // Set default dimensions dari state dulu
+          canvasRef.current.width = canvasDimensions.width;
+          canvasRef.current.height = canvasDimensions.height;
 
           // 5. Initialize MediaPipe Hands
           handsRef.current = new Hands({
@@ -422,21 +158,28 @@ const HandGestureDetector = memo(
           handsRef.current.onResults((results) => {
             if (!canvasRef.current || !isMounted) return;
 
-            const canvas = canvasRef.current;
-            const video = videoRef.current;
+            // Clear canvas dengan dimensi yang benar
+            ctx.clearRect(
+              0,
+              0,
+              canvasRef.current.width,
+              canvasRef.current.height
+            );
 
-            // Ensure canvas is synced before processing
-            if (!canvasSyncedRef.current) {
-              syncCanvasWithVideoStream();
-              return; // Skip this frame
-            }
-
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw video frame at canvas native size (no scaling at canvas level)
-            // CSS will handle the display scaling and cropping
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Draw video ke canvas dengan proper mapping dari source ke destination
+            // Source: video dimensions (videoWidth x videoHeight)
+            // Destination: canvas dimensions (canvas.width x canvas.height)
+            ctx.drawImage(
+              videoRef.current,
+              0,
+              0,
+              videoRef.current.videoWidth || canvasRef.current.width,
+              videoRef.current.videoHeight || canvasRef.current.height, // source rectangle
+              0,
+              0,
+              canvasRef.current.width,
+              canvasRef.current.height // destination rectangle
+            );
 
             // Check if hand is visible
             const handVisible =
@@ -749,48 +492,15 @@ const HandGestureDetector = memo(
           style={{ display: "none" }}
         />
 
-        <canvas ref={canvasRef} className="responsive-canvas" />
-
-        {/* {showDebugInfo && (
-          <div className="absolute bottom-4 left-4 bg-black/70 px-3 py-2 rounded text-xs text-white font-mono z-20">
-            <div>
-              Canvas: {debugInfo.canvasWidth}×{debugInfo.canvasHeight}
-            </div>
-            <div>
-              Video: {debugInfo.videoWidth}×{debugInfo.videoHeight}
-            </div>
-            <div>AR: {debugInfo.videoAspectRatio}</div>
-            <div>Mode: {debugInfo.cssMode ? "CSS" : "JS"}</div>
-            <div>Attempt: {debugInfo.attempt}</div>
-            <div>
-              Status:{" "}
-              {debugInfo.synced ? "✅" : debugInfo.fallback ? "⚠️" : "⏳"}
-            </div>
-          </div>
-        )} */}
-
-        {/* Add required CSS styles */}
-        <style jsx>{`
-          .canvas-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 0.75rem;
-            background: transparent;
-          }
-
-          .responsive-canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scale(-1, 1);
-            border-radius: 0.75rem;
-          }
-        `}</style>
+        {/* Canvas dengan style yang diupdate untuk handle responsive dimensions */}
+        <canvas
+          ref={canvasRef}
+          className="absolute top-0 left-0 w-full h-full object-cover rounded-xl" // Ganti object-cover menjadi object-contain
+          style={{
+            transform: "scale(-1, 1)", // Mirror tetap untuk efek cermin
+            objectFit: "cover",
+          }}
+        />
       </div>
     );
   },

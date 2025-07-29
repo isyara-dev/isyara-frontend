@@ -27,6 +27,7 @@ import { ProfilePage } from "./features/profile";
 import { SusunKataPage } from "./features/tantangan";
 import { useAuth } from "./contexts/AuthContext";
 import { LearningProvider } from "./contexts/LearningContext";
+// import CameraTest from "./features/gesture/view/CameraTest"; // for testing
 
 // Komponen untuk menangani logout
 const LogoutHandler = () => {
@@ -114,6 +115,7 @@ function App() {
     <Router>
       <Routes>
         {/* Public Routes */}
+        {/* <Route path="/test" element={<CameraTest />} /> */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />

@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     ].filter(Boolean),
     server: {
       host: true,
-      allowedHosts: ["682afdc548e5.ngrok-free.app"],
+      allowedHosts: ["459ca1dff9a8.ngrok-free.app"],
     },
   };
 });
